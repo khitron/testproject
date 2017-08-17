@@ -1,0 +1,49 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the builtins definition main file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Builtins main.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% Compile this program without specializing partially instantiated calls
+% and using prepropcessor.
+:- compiler_options([spec_off, xpp_on]).
+
+% Define in preprocessor exported programs prefix and mode to read it properly.
+#define PREFIX _^pathlp_247_
+#mode nostring "\!#'"
+
+% Module namespace directives.
+
+:- export bin/1, stop_tests/2, vars_commit/0.
+:- import resetsystem/1, setconfig/4, getconfig/2, plpconf/1, createmodule/1,
+        throwerr/1, load/3, checkmodule/1, trystable/0, pwrite/1,
+        printstate/1, throwerr/2, retstable/1, dostable/1, bgt/1, setconfig/2,
+        makestableone/2, 'PREFIX is_q_untproperty'/4 from module.
+:- import abtr from codegen.
+:- import append/3, length/2, member/2, select/3 from basics.
+:- dynamic ast/1.
+
+% XSB preprocessor definitions.
+
+:- compiler_options([spec_off, xpp_on]).
+
+% All builtins files list.
+
+#include "system.P"
+#include "configuration.P"
+#include "database.P"
+#include "dynmods.P"
+#include "flowing.P"
+#include "testing.P"
+#include "otherbuiltins.P"
+#include "variables.P"
+#include "aggregation.P"

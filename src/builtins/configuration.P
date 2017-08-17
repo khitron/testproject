@@ -1,0 +1,139 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the application configuration builtins definition file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% answers/1 (? configuration field value)
+% This predicate sets answers flag.
+
+bin(answers(X)) :- setconfig(answers, X, wait, all).
+
+% warnings/1 (? configuration field value)
+% This predicate sets warnings flag.
+
+bin(warnings(X)) :- setconfig(warnings, X, on, off).
+
+% stability/1 (? configuration field value)
+% This predicate sets stability flag.
+
+bin(stability(X)) :- setconfig(stability, X, automatic, initiated).
+
+% tracing/1 (? configuration field value)
+% This predicate sets tracing flag.
+
+bin(tracing(X)) :- setconfig(tracing, X, no, trace).
+
+% typing/2 (? configuration field value, + module name)
+% This predicate sets typing flag.
+
+bin(typing(X, MOD)) :- bin(module(NOW)),
+                       bin(module(MOD)),
+                       setconfig(typing, X, inference, checking),
+                       bin(module(NOW)).
+
+% typing/1 (? configuration field value)
+% This predicate sets typing flag.
+
+bin(typing(X)) :- setconfig(typing, X, inference, checking).
+
+% equality/2 (? configuration field value, + module name)
+% This predicate sets equality flag.
+
+bin(equality(X, MOD)) :- bin(module(NOW)),
+                         bin(module(MOD)),
+                         setconfig(equality, X, empty, normal),
+                         bin(module(NOW)).
+
+% equality/1 (? configuration field value)
+% This predicate sets equality flag.
+
+bin(equality(X)) :- setconfig(equality, X, empty, normal).
+
+% timeout/1 (? configuration field value)
+% This predicate sets actions timeout time.
+
+bin(timeout(X)) :- ((real(X),
+                   X > 0);
+                   X == '*'),
+                   !,
+                   setconfig(timeout, X).
+bin(timeout(X)) :- var(X) ->
+                   getconfig(timeout, X);
+                   throwerr('Wrong timeout value (should be positive real or *):', X).
+
+% TODO comments external and internal.
+bin(depth(FLAG, VALUE)) :- depthflag('table depth', FLAG, VALUE).
+bin(sdepth(FLAG, VALUE)) :- depthflag('stability table depth', FLAG, VALUE).
+
+depthflag(NAME, FLAG, _) :- var(FLAG),
+                            throwerr('Variable depth flag', NAME).
+depthflag(NAME, FLAG, VALUE) :-  member(FLAG, [subgoal, answer, list]),
+                           !,
+                           getconfig(NAME, CURR),
+                           select([FLAG, OLD, ACTION], CURR, REST),
+                           (integer(VALUE),
+                           VALUE > 0,
+                           !,
+                           sort([[FLAG, VALUE, ACTION]|REST], SORTED),
+                           setconfig(NAME, SORTED),
+                           updatexsbflag(NAME, FLAG, VALUE);
+                           var(VALUE),
+                           !,
+                           VALUE = OLD;
+                           VALUE = d,
+                           getconfig('default table depth', DEF),
+                           member([FLAG, NEED, _], DEF),
+                           sort([[FLAG, NEED, ACTION]|REST], SORTED),
+                           setconfig(NAME, SORTED),
+                           updatexsbflag(NAME, FLAG, NEED);
+                           throwerr('Wrong value for depth flag', [NAME, FLAG, VALUE])).
+depthflag(NAME, FLAG, VALUE) :-  member(FLAG, [a(subgoal), a(answer),
+                               a(list)]),
+                           !,
+                           a(AFLAG) = FLAG,
+                           getconfig(NAME, CURR),
+                           select([AFLAG, NUMBER, OLD], CURR, REST),
+                           ((nonvar(VALUE),
+                           ((AFLAG == answer, \+ member(VALUE, [bounded_rationality, failure, error, warning]));
+                           (AFLAG == list, \+ member(VALUE, [failure, error, warning]));
+                           (AFLAG == subgoal, \+ member(VALUE, [abstract, failure, error])))),
+                           %member([AFLAG, VALUE], [[subgoal, a], [answer, bounded_rationality (default), failure, error, warning], [list, a]])),
+                           %error, failure, warning, bounded_rationality, abstract, d])
+                           !,
+                           throwerr('Wrong value for tabling depth flag', [NAME, AFLAG, VALUE]);
+                           var(VALUE),
+                           !,
+                           VALUE = OLD;
+                           VALUE = d,
+                           !,
+                           getconfig('default table depth', DEF),
+                           member([AFLAG, _, NEED], DEF),
+                           sort([[AFLAG, NUMBER, NEED]|REST], SORTED),
+                           writeln(NAME = SORTED),
+                           setconfig(NAME, SORTED),
+                           updatexsbflag(NAME, FLAG, NEED);
+                           sort([[AFLAG, NUMBER, VALUE]|REST], SORTED),
+                           setconfig(NAME, SORTED)),
+                           updatexsbflag(NAME, FLAG, VALUE).
+depthflag(NAME, FLAG, _) :-  throwerr('Wrong depth flag', [NAME, FLAG]).
+
+updatexsbflag(NAME, FLAG, VALUE) :- NAME == 'table depth' ->
+                              member((FLAG, NEW),
+                                  [(subgoal, max_table_subgoal_depth),
+                                   (answer, max_table_answer_depth),
+                                   (list, max_table_answer_list_depth),
+                                   (a(subgoal), max_table_subgoal_action),
+                                   (a(answer), max_table_answer_action),
+                                   (a(list), max_table_answer_list_action)]),
+                              set_prolog_flag(NEW, VALUE);
+                              otherwise.

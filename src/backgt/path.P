@@ -1,0 +1,49 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+'_^pathlp_247_ q_property MODNAME'((_Va), (compose(_Vw1, _Vw2, _Vmid)), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (sum(_Vw1, _Vw2)), ('_ground'), (true))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_Vw1), (_Vmid))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmid), (_Vw2), (_Vb)))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (compose(_Vw1, _Vw2)), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (sum(_Vw1, _Vw2)), ('_ground'), (true))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_Vw1), (_Vmid))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmid), (_Vw2), (_Vb)))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (closure), (_Vc)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_V2), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'((_Va), (closure), (_Vc)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_V3), (_Vd))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vd), (closure), (_Vc)))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (closure([ ])), (_Vc)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_V4), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'((_Va), (closure(_Vpath)), (_Vc)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vpath), ('_var'), (false))), (((((_Vpath) = ([_Vd|_Vrest]))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_V5), (_Vd))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vd), (closure(_Vrest)), (_Vc))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Vd))))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Va)))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (closure_edges(_Vpath)), (_Vc)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vpath), ('_var'), (false))), (((((_Vpath) = ([_Vb]))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_Vb), (_Vc)))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (closure_edgse(_Vpath)), (_Vc)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vpath), ('_var'), (false))), (((((_Vpath) = ([_Vb|_Vrest]))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Va), (_Vb), (_Vd))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vd), (closure_edges(_Vrest)), (_Vc))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Vd))))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Va)))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (circle), (true)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Va), (closure), (_Va)).
+'_^pathlp_247_ q_property MODNAME'((_Va), (circle(_Vcircle)), (_Va)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Va), (closure(_Vcircle)), (_Va)).
+:- '_^pathlp_247_ abolish'(MODNAME).

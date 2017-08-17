@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd"
+[
+       <!ENTITY varname  "\?([A-Za-z][0-9A-Za-z_]*)">
+       <!ENTITY dncvarname  "\?((_[0-9A-Za-z_]*)?)">
+       <!ENTITY varerror  "\?[0-9][0-9A-Za-z_]*">
+]>
+<language name="PathLP" version="1" kateversion="2.5.11" section="Sources"
+          extensions="*.ppl" indenter="pathlp"
+          mimetype="application/x-pathlp" casesensitive="1" author="Igal Khitron">
+
+       <highlighting>
+           <list name="predicates">
+                  <item> help </item>
+                  <item> halt </item>
+                  <item> resetsystem </item>
+                  <item> stable </item>
+                  <item> warnings </item>
+                  <item> answers </item>
+                  <item> equality </item>
+                  <item> typing </item>
+                  <item> stability </item>
+                  <item> tracing </item>
+                  <item> state </item>
+                  <item> if </item>
+                  <item> then </item>
+                  <item> else </item>
+                  <item> pwrite </item>
+                  <item> pwriteln </item>
+                  <item> load </item>
+                  <item> loadnew </item>
+                  <item> module </item>
+                  <item> newmodule </item>
+                  <item> def </item>
+                  <item> lpp </item>
+                  <item> MODNAME </item>
+                  <item> test </item>
+                  <item> bagof </item>
+                  <item> setof </item>
+                  <item> sum </item>
+                  <item> average </item>
+                  <item> max </item>
+                  <item> min </item>
+                  <item> depth </item>
+                  <item> sdepth </item>
+                  <item> answer </item>
+                  <item> list </item>
+                  <item> subgoal </item>
+                  <item> bounded_rationality </item>
+                  <item> failure </item>
+                  <item> error </item>
+                  <item> warning </item>
+                  <item> abstract </item>
+                  <item> timeout </item>
+                  <item> testing </item>
+                  <item> in </item>
+                  <item> one </item>
+                  <item> d </item>
+           </list>
+
+           <list name="prolog_">
+                  <item> is </item>
+                  <item> mod </item>
+                  <item> rem </item>
+                  <item> div </item>
+                  <item> xor </item>
+                  <item> ceiling </item>
+                  <item> floor </item>
+                  <item> truncate </item>
+                  <item> round </item>
+                  <item> float </item>
+                  <item> sqrt </item>
+                  <item> sign </item>
+                  <item> pi </item>
+                  <item> e </item>
+                  <item> epsilon </item>
+                  <item> from </item>
+                  <item> as </item>
+                  <item> true </item>
+                  <item> false </item>
+                  <item> undefined </item>
+                  <item> otherwise </item>
+                  <item> fail </item>
+           </list>
+
+           <list name="psymbols">
+                  <item> and </item>
+                  <item> or </item>
+                  <item> not </item>
+           </list>
+           <contexts>
+                  <context attribute="Unparsable" lineEndContext="#stay" name="FindCommands">
+                         <RegExpr String= "^###\s[a-zA-Z0-9]+\.lpp$" attribute="Prolog3"
+                         context="#stay"/>
+                         <RegExpr String= "^\s*cd\s+.*$" attribute="Comment" context="#stay"/>
+                         <RegExpr String= "^\s*cd$" attribute="Comment" context="#stay"/>
+                         <DetectSpaces attribute="Normal text"/>
+                         <RegExpr String= "a\(answer\)" attribute="Control" context="#stay"/>
+                         <RegExpr String= "a\(list\)" attribute="Control" context="#stay"/>
+                         <RegExpr String= "a\(subgoal\)" attribute="Control" context="#stay"/>
+                         <RegExpr String= "stable\(\?\)" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_size" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_count" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_var" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_equal" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_islist" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_length" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_member" attribute="Control" context="#stay"/>
+                         <RegExpr String= "_append" attribute="Control" context="#stay"/>
+                         <RegExpr String= "warnings\((on|off|d)\)" attribute="Control"
+                         context="#stay"/>
+                         <RegExpr String= "answers\((wait|all|d)\)" attribute="Control"
+                         context="#stay"/>
+                         <RegExpr String= "equality\((normal|empty|d)\)" attribute="Control"
+                         context="#stay"/>
+                         <RegExpr String= "typing\((inference|checking|d)\)" attribute="Control"
+                         context="#stay"/>
+                         <RegExpr String= "stability\((automatic|initiated|d)\)" attribute="Control"
+                         context="#stay"/>
+                         <RegExpr String= "tracing\((no|trace|d)\)" attribute="Control"
+                         context="#stay"/>
+                         <RegExpr String= "testing\((work|debug|d)\)" attribute="Control"
+                         context="#stay"/>
+                         <RegExpr String= "answer\([0-9]+\)" attribute="Control" context="#stay"/>
+                         <keyword attribute="Prolog3" context="#stay" String="prolog_" />
+                         <keyword attribute="Control" context="#stay" String="predicates" />
+                         <RegExpr String= "\.   " attribute="Control" context="#stay"/>
+                         <RegExpr String= "\.  " attribute="Prolog3" context="#stay"/>
+                         <RegExpr String=
+                     "@(_prolog|gensym|string|file_io|parse|basics|machine|standard|usermod|random)"
+                                  attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "&amp;." attribute="Number1" context="#stay"/>
+                         <RegExpr String= "\?\?-" attribute="Query" context="#stay"/>
+                         <RegExpr String= "\?-" attribute="Query" context="#stay"/>
+                         <RegExpr String= "^(\s*[a-zA-Z_][a-zA-Z0-9_]*\s)?\s*!-" attribute="Query"
+                         context="#stay"/>
+                         <RegExpr String= ";" attribute="Query" context="#stay"/>
+                         <RegExpr String="^#! /usr/bin/env\spathlp\s?$" attribute="Comment"
+                         context="#stay" />
+                         <RegExpr String= "\_[a-zA-Z]+" attribute="Query" context="#stay"/>
+                         <RegExpr String="&varerror;" attribute="Unparsable" context="#stay" />
+                         <RegExpr String="&varname;" attribute="Variable" context="#stay" />
+                         <RegExpr String="&dncvarname;" attribute="DNCVariable" context="#stay" />
+                         <keyword attribute="Control" context="#stay" String="psymbols" />
+                         <RegExpr String="[A-Za-z_]([A-Za-z0-9_]*)" attribute="Predicate"
+                         context="#stay" />
+                         <DetectChar context="AfterHash" char="#" firstNonSpace="true"
+                         lookAhead="true" />
+                         <Detect2Chars attribute="Comment" context="Commentar 1" char="/" char1="*"
+                         beginRegion="Comment"/>
+                         <DetectChar attribute="Comment" context="Commentar 3" char="%"/>
+                         <DetectChar attribute="Prolog3" context="Prolog 1" char="`"/>
+                         <DetectChar attribute="Prolog3" context="Prolog 5" char="&quot;"/>
+                         <DetectChar attribute="Predicate" context="Predicate 1" char="'"/>
+                         <RegExpr String= "\*\*" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String="\*" attribute="Number1" context="#stay" />
+                         <RegExpr String="[-]?[0-9]+\.[0-9]+" attribute="Number1" context="#stay" />
+                         <RegExpr String="[-]?[0-9]+" attribute="Number1" context="#stay" />
+                         <RegExpr String= "\\\+" attribute="Control" context="#stay"/>
+                         <RegExpr String= "\!=" attribute="Control" context="#stay"/>
+                         <RegExpr String= "\!" attribute="Symbol" context="#stay"/>
+                         <RegExpr String= "\.\." attribute="Query" context="#stay"/>
+                         <RegExpr String= ":=:" attribute="Symbol" context="#stay"/>
+                         <RegExpr String= "\|" attribute="Control" context="#stay"/>
+                         <RegExpr String= "\(" attribute="Query" context="#stay"/>
+                         <RegExpr String= "\)" attribute="Query" context="#stay"/>
+                         <RegExpr String= "\[" attribute="Query" context="#stay"/>
+                         <RegExpr String= "\]" attribute="Query" context="#stay"/>
+                         <RegExpr String= "\{" attribute="Query" context="#stay"/>
+                         <RegExpr String= "\}" attribute="Query" context="#stay"/>
+                         <RegExpr String= "=&lt;   " attribute="Control" context="#stay"/>
+                         <RegExpr String= ">=   " attribute="Control" context="#stay"/>
+                         <RegExpr String= "&lt;   " attribute="Control" context="#stay"/>
+                         <RegExpr String= ">   " attribute="Control" context="#stay"/>
+                         <RegExpr String= ":   " attribute="Control" context="#stay"/>
+                         <RegExpr String= ",   " attribute="Query" context="#stay"/>
+                         <RegExpr String= "=&lt;  " attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ">=  " attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "&lt;  " attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ">  " attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ":  " attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ",  " attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\." attribute="Query" context="#stay"/>
+                         <RegExpr String= "\^=\.\." attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "=\\=" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\\==" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "@=&lt;" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "@>=" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "-->" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "=\.\." attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "=:=" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "::-" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ":-" attribute="Query" context="#stay"/>
+                         <RegExpr String= ":" attribute="Query" context="#stay"/>
+                         <RegExpr String= "\\=" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "==" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "@=" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "@&lt;" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "@>" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "->" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\?=" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "/\\" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\\/" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "//" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "&lt;&lt;" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ">&lt;" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ">>" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\+" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "-" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "/" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\\" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\^" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= ">=" attribute="Control" context="#stay"/>
+                         <RegExpr String= "=&lt;" attribute="Control" context="#stay"/>
+                         <RegExpr String= "=" attribute="Control" context="#stay"/>
+                         <RegExpr String= "&lt;" attribute="Control" context="#stay"/>
+                         <RegExpr String= ">" attribute="Control" context="#stay"/>
+                         <RegExpr String= "," attribute="Query" context="#stay"/>
+                         <RegExpr String= "@[a-zA-Z_][a-zA-Z_0-9]*" attribute="Comment"
+                         context="#stay"/>
+                         <RegExpr String= "@" attribute="Control" context="#stay"/>
+                  </context>
+
+                  <context attribute="Prolog3" name="Prolog 1" lineEndContext="#pop">
+                         <RegExpr String= "&varerror;" attribute="Unparsable" context="#stay"/>
+                         <RegExpr String= "&varname;" attribute="Variable" context="#stay"/>
+                         <RegExpr String= "&dncvarname;" attribute="DNCVariable" context="#stay"/>
+                         <RegExpr String= "\\\\" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\\`" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\\\?" attribute="Prolog3" context="#stay"/>
+                         <DetectChar attribute="Prolog3" context="#pop" char="`"/>
+                         <RegExpr String= "[^`]*$" attribute="Unparsable" context="#stay"/>
+                  </context>
+
+                  <context attribute="Prolog3" name="Prolog 5" lineEndContext="#pop">
+                         <RegExpr String= "\\\\" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\\&quot;" attribute="Prolog3" context="#stay"/>
+                         <DetectChar attribute="Prolog3" context="#pop" char="&quot;"/>
+                         <RegExpr String= "[^&quot;]*$" attribute="Unparsable" context="#stay"/>
+                  </context>
+
+                  <context attribute="Predicate" name="Predicate 1" lineEndContext="#pop">
+                         <RegExpr String= "&amp;03[2-9]" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "&amp;0[4-9][0-9]" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "&amp;1[0-1][0-9]" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "&amp;12[0-6]" attribute="Prolog3" context="#stay"/>
+                         <RegExpr String= "\\&amp;" attribute="Predicate" context="#stay"/>
+                         <RegExpr String= "\\\\" attribute="Predicate" context="#stay"/>
+                         <RegExpr String= "\\'" attribute="Predicate" context="#stay"/>
+                         <DetectChar attribute="Predicate" context="#pop" char="'"/>
+                         <RegExpr String= "[^']*$" attribute="Unparsable" context="#stay"/>
+                  </context>
+
+                  <context attribute="Comment" lineEndContext="#stay" name="Commentar 1">
+                         <Detect2Chars attribute="Comment" context="#pop" char="*" char1="/"
+                         endRegion="Comment"/>
+                  </context>
+
+                  <context attribute="Comment" lineEndContext="#pop" name="Commentar 3">
+                         <LineContinue attribute="Comment" context="#stay"/>
+                  </context>
+
+                  <context attribute="Unparsable" lineEndContext="#pop" name="AfterHash">
+                         <RegExpr attribute="Preprocessor3" context="Preprocessor"
+                         String="#\s*if(def|ndef|eq|neq)?(?=\s+\S)"
+                                  insensitive="true" beginRegion="PP" firstNonSpace="true" />
+                         <RegExpr attribute="Preprocessor3" context="Preprocessor"
+                         String="#\s*endif"
+                                  insensitive="true" endRegion="PP" firstNonSpace="true" />
+                         <RegExpr attribute="Preprocessor3" context="Preprocessor"
+                                  String="#\s*(else|elif|include|define|defeval|mode|eval|exec)\s."
+                                  insensitive="true" firstNonSpace="true" />
+                  </context>
+
+                  <context attribute="Preprocessor3" lineEndContext="#pop" name="Preprocessor">
+                         <LineContinue attribute="Preprocessor3" context="#stay"/>
+                         <Detect2Chars attribute="Comment" context="Commentar/Preprocessor" char="/"
+                         char1="*" beginRegion="Comment1" />
+                  </context>
+
+                  <context attribute="Comment" lineEndContext="#stay" name="Commentar/Preprocessor">
+                         <Detect2Chars attribute="Comment" context="#pop" char="*" char1="/"
+                         endRegion="Comment1" />
+                  </context>
+           </contexts>
+           <itemDatas>
+                  <itemData name="Symbol" defStyleNum="dsNormal" bold="1"/>
+                  <itemData name="Preprocessor3" color="#00C5CD" defStyleNum="dsKeyword"
+                  italic="1"/>
+                  <itemData name="Comment" defStyleNum="dsComment"/>
+                  <itemData name="Predicate" defStyleNum="dsString" color="#228b22"
+                  selColor="#90EE90" spellChecking="false"/>
+                  <itemData name="Variable" defStyleNum="dsString" color="#ff0000"
+                  selColor="#8B0000" bold="1" spellChecking="false"/>
+                  <itemData name="DNCVariable" defStyleNum="dsKeyword" color="#ffaabb"
+                  selColor="#ffaabb" bold="1"/>
+                  <itemData name="Query" defStyleNum="dsKeyword" color="#CD950C" selColor="#ffff00"
+                  bold="1"/>
+                  <itemData name="Control" defStyleNum="dsKeyword" color="#881188"
+                  selColor="#FF7F24"
+                  bold="1"/>
+                  <itemData name="Normal Text" defStyleNum="dsNormal"/>
+                  <itemData name="Unparsable" defStyleNum="dsError" color="#000000"
+                  selColor="#F5F5DC" backgroundColor="#FF0000"/>
+                  <itemData name="Number1" color="#3A5FCD" defStyleNum="dsDecVal"/>
+                  <itemData name="Prolog3" defStyleNum="dsError" color="#EEEE00"
+                  backgroundColor="#777777" selColor="#D2691E" underline="false" bold="1"/>
+           </itemDatas>
+    </highlighting>
+    <general>
+           <comments>
+                  <comment name="singleLine" start="%" />
+                  <comment name="multiLine" start="/*" end="*/" />
+           </comments>
+           <keywords casesensitive="1"/>
+    </general>
+</language>

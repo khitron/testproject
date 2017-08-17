@@ -1,0 +1,33 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+#define PREFIX _^pathlp_247_
+#mode nostring "\!#'"
+
+% Trie indexing, part 1.
+:- 'PREFIX index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile 'PREFIX q_constraint MODNAME'     /4,
+             'PREFIX q_equal MODNAME'          /2,
+             'PREFIX q_membership MODNAME'     /2,
+             'PREFIX q_property MODNAME'       /3,
+             'PREFIX q_subclass MODNAME'       /2,
+             'PREFIX q_type MODNAME'           /5,
+             'PREFIX fact_q_equal MODNAME'     /2,
+             'PREFIX fact_q_membership MODNAME'/2,
+             'PREFIX fact_q_property MODNAME'  /3,
+             'PREFIX fact_q_subclass MODNAME'  /2,
+             'PREFIX fact_q_type MODNAME'      /5.
+:- dynamic 'PREFIX q_constraint MODNAME'/4,
+           'PREFIX q_equal MODNAME'     /2, 'PREFIX fact_q_equal MODNAME'     /2,
+           'PREFIX q_membership MODNAME'/2, 'PREFIX fact_q_membership MODNAME'/2,
+           'PREFIX q_property MODNAME'  /3, 'PREFIX fact_q_property MODNAME'  /3,
+           'PREFIX q_subclass MODNAME'  /2, 'PREFIX fact_q_subclass MODNAME'  /2,
+           'PREFIX q_type MODNAME'      /5, 'PREFIX fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- 'PREFIX index'(2, 'MODNAME').
+
+% Compiled file.

@@ -1,0 +1,52 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+'_^pathlp_247_ fact_q_membership MODNAME'(('Moshe'), ('UnGraduate')).
+'_^pathlp_247_ fact_q_membership MODNAME'(('Rina'), ('UnGraduate')).
+'_^pathlp_247_ fact_q_property MODNAME'(('Moshe'), (studies), (infi1)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Rina'), (teaches), (infi1)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Rina'), (studies), (infi3)).
+'_^pathlp_247_ fact_q_property MODNAME'((infi1), (points), (6)).
+'_^pathlp_247_ fact_q_property MODNAME'((infi3), (points), (4)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Moshe'), (studies), (bigData)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Rina'), (studies), (bigData)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Moshe'), (curPoints), (30)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Moshe'), (maxPoints), (120)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Rina'), (curPoints), (0)).
+'_^pathlp_247_ fact_q_property MODNAME'(('Rina'), (maxPoints), (30)).
+'_^pathlp_247_ fact_q_membership MODNAME'((bigData), ('Seminar')).
+'_^pathlp_247_ fact_q_property MODNAME'((bigData), (topic), ('big')).
+'_^pathlp_247_ fact_q_property MODNAME'((bigData), (topic), ('Data')).
+'_^pathlp_247_ fact_q_property MODNAME'((bigData), (points), (1)).
+:- '_^pathlp_247_ abolish'(MODNAME).

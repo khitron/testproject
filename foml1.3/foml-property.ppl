@@ -1,0 +1,40 @@
+% Disjunction
+?o.link(OR(?p1, ?p2, ?mod))[?o1] :- ?p1._var[false],
+                              ?p2._var[false],
+                              ?p1:Property@?mod,
+                              ?p2:Property@?mod,
+                              ?o:Object@?mod,
+                              ?p1 != ?p2,
+                              (?o.link(?p1)[?o1]@?mod or ?o.link(?p2)[?o1]@?mod);
+
+% Conjunction
+
+?o.link(AND(?p1, ?p2, ?mod))[?o1] :- ?p1._var[false],
+                               ?p2._var[false],
+                               ?p1:Property@?mod,
+                               ?p2:Property@?mod,
+                               ?o:Object@?mod,
+                               ?p1 != ?p2,
+                               ?o.link(?p1)[?o1]@?mod,
+                               ?o.link(?p2)[?o1]@?mod;
+
+% Negation
+?o.link(NOT(?p, ?mod))[?o1] :- ?p._var[false],
+                         ?p:Property@?mod,
+                         ?o:Object@?mod,
+                         ?o.?p1[?o1]@?mod,
+                         ?p1:Property@?mod,
+                         not ?o.?p[?o1]@?mod;
+
+% Composition
+?c1.compose(?p, ?p1, ?mod)[?c3] :- ?c1.property(?p, ?mod)[?c2],
+                                   ?c2.property(?p1, ?mod)[?c3];
+?c1.compose(?p, ?c2, ?p1, ?mod)[?c3] :- ?c1.property(?p, ?mod)[?c2],
+                                        ?c2.property(?p1, ?mod)[?c3];
+
+% Closure
+?x.closure(?e, ?mod)[?y] :- ?e._var[false],
+                            ?x.property(?e)[?y]@?mod;
+?x.closure(?e, ?mod)[?y] :- ?e._var[false],
+                            ?x.property(?e)[?z]@?mod,
+                            ?z.closure(?e, ?mod)[?y];

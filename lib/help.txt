@@ -1,0 +1,36 @@
+PathLP, 2011, 2013.
+
+/-------------------------+----------------------------------+---------------\
+|           Action        |           Interpreter            |     Shell     |
++-------------------------+----------------------------------+---------------+
+| Load a file             | load(FILENAME) or [FILE, ...]    | FILENAME      |
+| Load stdin              | load(_) or [_]                   | -stdin or _   |
+| Load a file to a module | load(FILE,MOD) or [FILE,...|MOD] | -tom MOD FILE |
+| Load stdin to a module  | load(_,MOD) or [...,_,...|MOD]   | -tom MOD _    |
+| Create new module       | newmodule(MOD)                   | -new MOD      |
+| Change current module   | module(MOD)                      | -module MOD   |
+| This message            | help                             | -help or -h   |
+| Stop working            | halt or <local eof>              | -halt         |
+| Status stop working     | hlt(<error level>)               | -hlt <errlev> |
+| Erase the database      | resetsystem                      | -reset        |
+| Check stability         | stable(MOD)                      | -stb MOD      |
+| Check stability in def  | stable(def)                      | -stab         |
+| Print warnings          | warnings(on)                     | -won          |
+| Stop print warnings     | warnings(off)                    | -woff         |
+| Wait after answers      | answers(wait)                    | -await        |
+| Print all answers       | answers(all)                     | -aall         |
+| Normal equality         | equality(normal)                 | -enormal      |
+| Without equality        | equality(empty)                  | -eempty       |
+| Typing inference        | typing(inference)                | -tinf         |
+| Typing checking         | typing(checking)                 | -tcheck       |
+| Stability checks        | stability(automatic)             | -saut         |
+| No stability checks     | stability(initiated)             | -sinit        |
+| Disable testing         | testing(work)                    | -work         |
+| Enable testing          | testing(debug)                   | -debug        |
+| No trace on errors      | tracing(no)                      | -bno          |
+| Trace on errors         | tracing(trace)                   | -btrace       |
+| System configuration    | state                            | -state        |
+\-------------------------+----------------------------------+---------------/
+
+Default module is def.
+More in http://www.cs.bgu.ac.il/~khitron/pathlp/manual.pdf.

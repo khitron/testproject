@@ -1,0 +1,227 @@
+% FOML -- F-Logic inspired Object Modeling Language.
+
+:- ['foml-class'];
+:- ['foml-property'];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Meta Model -- Syntax of FOML models
+
+%%% FOML will include Class, Property, Multiplicity, Hierarchy, Object, Link.
+
+%%%%%%%%%%%%%%%%%%%%%%%% Syntax
+
+%%%                                          Meta-Classes
+
+% MM_Class includes Class, Property, Association, Multiplicity, Attribute
+% and Generalization Meta Meta Classes only.
+
+?c:MM_Class :- ?c.member(?)[MM_Class];
+
+?x:?M_Class :- ?M_Class_Name : MM_Class,
+               ?x:?M_Class_Name@?mod,
+               ?M_Class =.. [?M_Class_Name, ?mod];
+
+Class.member(?mod)[MM_Class] :- ?:Class@?mod;
+?c.member(?mod)[Class] :- ?.prop(?, ?, ?)[?c]@?mod;
+?c.member(?mod)[Class] :- ?c::?@?mod;
+?c.member(?mod)[Class] :- ?::?c@?mod;
+
+Property.member(?mod)[MM_Class] :- ?:Property@?mod;
+?p.member(?mod)[Property] :- ?p.classes(?, ?, ?)[?]@?mod;
+
+Multiplicity.member(?mod)[MM_Class] :- ?:Multiplicity@?mod;
+mult(?prop, ?l, ?h).member(?mod)[Multiplicity] :- ?prop.classes(?, ?l, ?h)[?]@?mod;
+
+Association.member(?mod)[MM_Class] :- ?:Association@?mod;
+?a.member(?mod)[Association] :- ?a.prop(?x, ?y, ?z)[?t]@?mod, 
+                                ?a.prop(?x, ?y, ?z)[?t]@?mod;
+
+Attribute.member(?mod)[MM_Class] :- ?:Attribute@?mod;
+attr(?c, ?attr, ?type).member(?mod)[Attribute] :- ?c.attr(?attr, ?, ?)[?type]@?mod;
+
+%%% Property connection with Class type path expressions.
+ 
+c1_No_other_meta_classes
+!- ?c:MM_Class,
+   not [Class, Property, Attribute, Multiplicity, Association, Link, Object]._member[?c];
+
+?mod.constraint[Unknown_meta_classes(?c)] :- ?c.member(?mod)[MM_Class],
+   not [Class, Property, Attribute, Multiplicity, Association, Link, Object]._member[?c]@?mod;
+
+c2_No_nonground_class
+!- ?Class.member(?mod)[Class],
+   ?mod._ground[false];
+
+?mod.constraint[Nonground_class(?c)] :- ?c.member(?mod)[Class],
+                                        ?mod._ground[false];
+
+c3_No_nonground_property
+!- ?Property.member(?mod)[Property],
+   ?mod._ground[false];
+
+?mod.constraint[Nonground_property(?p)] :- ?p.member(?mod)[Property],
+                                           ?mod._ground[false];
+
+c6_M_Classes_are_disjoint_sets
+!- ?c.member(?mod)[?a],
+   ?c.member(?mod)[?b],
+   ?a != ?b,
+   ?a.member(?mod)[MM_Class],
+   ?b.member(?mod)[MM_Class];
+
+%%% Closing the property, source, target relations
+?mod.constraint[Property_closing_1(c = ?c, p = ?p)] :- ?c.property[?p]@?mod,
+                                                       not ?c.member(?mod)[Class];
+
+?mod.constraint[Property_closing_2(c = ?c, p = ?p)] :- ?c.property[?p]@?mod,
+                                                       not ?p.member(?mod)[Property];
+
+?mod.constraint[Source_closing_1(c = ?c, p = ?p)] :- ?p.source[?c]@?mod,
+                                                       not ?c.member(?mod)[Class];
+
+?mod.constraint[Source_closing_2(c = ?c, p = ?p)] :- ?p.source[?c]@?mod,
+                                                     not ?p.member(?mod)[Property];
+
+?mod.constraint[Target_closing_1(c = ?c, p = ?p)] :- ?p.target[?c]@?mod,
+                                                       not ?c.member(?mod)[Class];
+
+?mod.constraint[Target_closing_2(c = ?c, p = ?p)] :- ?p.target[?c]@?mod,
+                                                     not ?p.member(?mod)[Property];
+
+?mod.constraint[Hierarchy_circulary(c = ?c, c1 = ?c1)] :- ?c.member(?mod)[Class],
+                                                          ?c1.member(?mod)[Class],
+                                                          ?c.sub(?mod)[?c1],
+                                                          ?c1.sub(?mod)[?c];
+
+?mod.constraint[Same_inversed_property(p = ?p, p1 = ?p1)] :- ?p.inverse[?p1]@?mod,
+                                                             ?p1.inverse[?p2]@?mod,
+                                                             ?p != ?p2;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Bridge rules
+
+?c.member(?mod)[?y] :- ?c:?y@?mod;
+?c.sub(?mod)[?y] :- ?c::?y@?mod;
+
+?p.source(?mod)[?c] :- ?p.classes(?c, ?, ?)[?]@?mod;
+?p.target(?mod)[?c] :- ?p.classes(?, ?, ?)[?c]@?mod;
+?p.min(?mod)[?l] :- ?p.classes(?, ?l, ?)[?]@?mod;
+?p.max(?mod)[?h] :- ?p.classes(?, ?, ?h)[?]@?mod;
+?p.classes(?source, ?mod)[?target] :- ?p.classes(?source, ?, ?)[?target]@?mod;
+?c.property(?p, ?mod)[?c1] :- ?p.classes(?c, ?mod)[?c1];
+?c.property(?mod)[?p] :- ?p.classes(?c, ?mod)[?];
+?a.prop(?p, ?mod)[?c] :- ?a.prop(?p, ?, ?)[?c]@?mod;
+%?o.a(?a, ?mod)[?o1] :- ?o:Object@?mod,
+%                       ?o.?p[?o1]@?mod,
+%                       ?p:Property@?mod,
+%                       ?a.prop(?p)[?]@?mod;
+
+?c.dirsub(?mod)[?c1] :- ?c::?c1@?mod, not (?c::?intermediate@?mod, ?intermediate::?c1@?mod);
+?c.dirmmb(?mod)[?c1] :- ?c:?c1@?mod, ?c1:Class@?mod, not (?c:?intermediate@?mod, ?intermediate::?c1@?mod);
+ 
+%%% Navigation
+ 
+?c1.path([?p], ?mod)[?c2] :- ?c1.property(?p, ?mod)[?c2];
+?c1.path([?p|?rest], ?mod)[?c2] :- ?c.path(?rest, ?mod)[?c2], 
+                                   ?c1.property(?p, ?mod)[?c],
+                                   not ?rest._member[?p],
+                                   ?c:Class@?mod,
+                                   not ([?p|?rest]._member[?e1],
+                                        [?p|?rest]._member[?e2],
+                                        ?e1.inverse[?e2]@?mod);
+
+?c.cycle(?mod)[?cycle] :- ?c.path(?cycle, ?mod)[?c];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Objects and links %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Object.member(?mod)[MM_Class] :- ?:Object@?mod;
+?o.member(?mod)[Object] :- ?o:?c@?mod,
+                           ?c:Class@?mod;
+
+Link.member(?mod)[MM_Class] :- ?:Link(?mod);
+?link.member(?mod)[Link] :- ?o:Object@?mod,
+                            ?o1:Object@?mod,
+                            ?o.link(?link)[?o1]@?mod;
+
+c4_No_nonground_object
+!- ?Object.member(?mod)[Object],
+   ?mod._ground[false];
+
+?mod.constraint[Nonground_object(?o)] :- ?o.member(?mod)[Object],
+                                         ?mod._ground[false];
+   
+c5_No_nonground_link
+!- ?Link.member(?mod)[Link],
+   ?mod._ground[false];
+
+?mod.constraint[Nonground_link(?link)] :- ?link.member(?mod)[Link],
+                                          ?mod._ground[false];
+
+?o.member(?mod)[?c] :- ?o1:Object@?mod,
+                       ?o.?p[?o1]@?mod,
+                       ?p:Property@?mod,
+                       ?p.source[?c]@?mod;
+
+?mod.constraint[Unexisting_Link(?o, ?o1, ?l)] :- ?o.link(?l)[?o1]@?mod,
+   (?o:Object@?mod or
+   ?o1:Object@?mod),
+   not ?l:Property@?mod,
+   not ?l = inverse,
+   not ?l = allclasses,
+   not ?l = datatypes,
+   not ?l = attr(?),
+   not ?l = dirmmb;
+
+%%% Toadd
+?mod.constraint[Wrong_association_ends_number(?assoc, ?list, ?length)] :-
+ ?assoc:Association@?mod, 
+ setof(?prop, ?assoc.prop(?prop)[?]@?mod, ?list),
+ ?list._length[?length],
+ ?length != 2;
+
+?mod.constraint[Wrong_attr_type(?class, ?Type)] :-
+ ?class:Class@?mod,
+ ?class!attr(?)[?Type]@?mod,
+ not ?Type:PrimTypes(?mod);
+
+?mod.constraint[Wrong_attr_class(?class)] :-
+ ?class!attr(?)[?]@?mod,
+ not ?class:Class@?mod;
+
+%?mod.conatraint[Unrecognized_feature(...) :-
+%   ?o.?feature[?value]@?data,
+%   ?feature != props,
+%   not (?o:?c,
+%        (?c.link(?feature)[?] or
+%         ?c.attr(?feature, ?, ?)[?]));
+ 
+ 
+%?mod.constraint[Wrong_func_return_type(?class, ?Type)] :-
+% ?class:Class@?mod,
+% ?class.func(?)[?Type]@?mod,
+% not (?Type:PrimTypes(?mod) or ?Type:Class@?mod);
+
+%?mod.constraint[Wrong_func_param_type(?class, ?funcname, ?Type)] :-
+% ?class:Class@?mod,
+% ?class.?func[?]@?mod,
+% ?func =.. [func|?funcnames],
+% ?funcnames._member[?funcsig],
+% ?funcsig =.. [?funcname|?params],
+% ?params._member[?:?Type],
+% not (?Type:PrimTypes(?mod) or ?Type:Class@?mod);
+
+%?mod.constraint[Wrong_func_class(?class)] :-
+% ?class.func(?)[?]@?mod,
+% not ?class:Class@?mod;
+
+%%%%%%%%%%%%%% New
+
+%?c:Class(?mod) :- ?.allclasses[?list]@?mod,
+%                  ?list._member[?c];
+%?c.member(?mod)[Class] :- ?c:Class(?mod);
+
+%?p.classes(?source, ?min, ?max, ?mod)[?target] :- ?source:Class(?mod),
+%                                                  ?target:Class(?mod),
+%                                                  ?source.?prop[?target],
+%                                                  ?prop =.. [?p, ?min, ?max];
+?Type:PrimTypes(?mod) :- ?.datatypes[?list]@?mod,
+                         ?list._member[?Type];

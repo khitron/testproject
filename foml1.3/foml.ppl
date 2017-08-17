@@ -1,0 +1,7 @@
+%%% FOML invocation script
+
+:- if existsmodule(foml) then otherwise else newmodule(foml);
+:- if existsmodule(graph) then otherwise else newmodule(graph);
+:- module(foml);
+:- load(types, MODNAME);
+:- load('foml-base', foml);

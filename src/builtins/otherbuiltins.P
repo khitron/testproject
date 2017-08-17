@@ -1,0 +1,82 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the utilities builtins file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% pwriteln/0+ (+ text pieces list)
+% This predicate prints its input in given order from argument list,
+% then prints new line.
+
+bin(PWRITELN) :- nonvar(PWRITELN),
+                 PWRITELN =.. [pwriteln|X],
+                 pwrite(X),
+                 nl.
+% pwrite/1+ (+ text pieces list)
+% This predicate prints its input in given order from argument list.
+
+bin(PWRITE) :- nonvar(PWRITE),
+               PWRITE =.. [pwrite, X|Y],
+               pwrite([X|Y]).
+
+% loadnew/1 (+ file names list)
+% This predicate loads files list to new dynamic space to current module.
+
+% Reset on proper file only for single file.
+bin(loadnew([FILE], MOD)) :- !,
+                             checkmodule(MOD),
+                             load(FILE, MOD, reset),
+                             !,
+                             trystable,
+                             !.
+bin(loadnew([FILE])) :- !,
+                        getconfig(module, MOD),
+                        load(FILE, MOD, reset),
+                        !,
+                        trystable,
+                        !.
+% Reset on start.
+bin(loadnew(FILE, MOD)) :- checkmodule(MOD),
+                           resetsystem(MOD),
+                           myloadlist(FILE, MOD),
+                           !.
+bin(loadnew(FILE)) :- getconfig(module, MOD),
+                      resetsystem(MOD),
+                      myloadlist(FILE, MOD),
+                      !.
+
+% load/1 (+ file names list)
+% This predicate loads files list to current module.
+
+% A library.
+bin(load(FILE, MOD)) :- MOD == lpp,
+                        !,
+                        load(FILE, _, library).
+bin(load(FILE, MOD)) :- checkmodule(MOD),
+                        myloadlist(FILE, MOD),
+                        !.
+bin(load(FILE)) :- getconfig(module, MOD),
+                   myloadlist(FILE, MOD),
+                   !.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% myloadlist/2 (+ file names list, + module name)
+% This predicate loads files list to same dynamic space to particular module.
+
+myloadlist([], Z) :- !,
+                     checkmodule(Z),
+                     trystable.
+myloadlist([X|Y], Z) :- !,
+                        checkmodule(Z),
+                        load(X, Z, saved),
+                        myloadlist(Y, Z).
+myloadlist(X, Z) :- myloadlist([X], Z).

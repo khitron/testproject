@@ -1,0 +1,50 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the system management builtins file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% help/0.
+% This predicate prints a help screen.
+
+bin(help) :- !,
+             path_sysop(cwd, CURRENT),
+             call_cleanup((getconfig(pathlpdir, DIR),
+             path_sysop(chdir, DIR),
+             path_sysop(chdir, lib),
+             path_sysop(isplain, 'help.txt'),
+             path_sysop(readable, 'help.txt'),
+             shell('more help.txt', PID),
+             PID = 0,
+             !),
+             path_sysop(chdir, CURRENT)) ->
+             otherwise;
+             throwerr('can''t found a help file').
+
+% state/0
+% This predicate prints system configuration state.
+
+bin(state) :- plpconf(CONF),
+              sort(CONF, SORTED),
+              printstate(SORTED),
+			  bin(printglobals).
+                 
+% halt/0
+% This predicate halts the program, as standard unique exit point pattern.
+% The errorlevel exit status is 0.
+
+bin(halt) :- halt.
+
+% halt/1 (+ status)
+% This predicate halts the program with parameter errorlevel exit status.
+
+bin(halt(STATUS)) :- standard:halt(STATUS). % change

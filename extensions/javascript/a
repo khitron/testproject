@@ -1,0 +1,30 @@
+function indent(line, indentWidth, char)
+{
+        var fullString = "";
+        var lineCounter = 0;
+        while (lineCounter <= line) {
+                fullString = fullString + document.line(lineCounter);
+                lineCounter++;
+        }
+        return closed(fullString);
+}
+function closed(all)
+{
+        if (all.length == 0 return exit("closed");
+        first = all.charAt(0);
+        length = all.length();
+        rest = all.substr(1, length)
+        if (first == '#')
+                return hash("closed", rest);
+        if (delimiter(first))
+                return closed(rest, false);
+        if (first == '\n')
+                return closed(rest, true);
+        if (first == "/" && rest.length > 0 && rest.charAt(0) == '*')
+                return comment("closed", rest.substr(1, length - 1);
+        if (first = '%')
+                return linecomment("closed", rest);
+        if (first = '`')
+                return backquote(rest);
+        return opened(rest, false)
+}

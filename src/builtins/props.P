@@ -1,0 +1,118 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the read only builtin properties file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_untproperty/4 (+ module name, ? object, ? property, ?guard)
+% (partially)
+% This predicate evaluates untabled property.
+
+% _size/0 (+ object, ? size)
+% _size/1 (+ object, + property, ? size)
+% This property calculates the number of properties of some object
+% (all kinds and some special).
+
+% _size property.
+'PREFIX is_q_untproperty'(MOD, OBJ, P, X) :-
+          ground(OBJ),
+          ground(P),
+          (var(X);
+          integer(X),
+          X > 0),
+          member(P, ['_size', '_size'(A)]),
+          getconfig(timeout, Time),
+          (Time == '*' ->
+          findall((A, RES),
+              'PREFIX is_q_untproperty'(MOD, OBJ, A, RES), LIST);
+          Timeout is round(Time * 1000),
+          catch(timed_call(findall((A, RES),
+              'PREFIX is_q_untproperty'(MOD, OBJ, A, RES), LIST),
+              [max(Timeout, throw(limit)), nesting]), limit, X = '*')),
+          (X == '*' ->
+          writeln('Timeout: The answer is undefined');
+          sort(LIST, SORTED),
+          droppairsvars(SORTED, NEWLIST),
+          length(NEWLIST, X),
+          X > 0),
+          !.
+
+% _count/0 (+ type, ? count)
+% This property calculates the number of elements in some type.
+
+'PREFIX is_q_untproperty'(MOD, CLASS, P, X) :-
+          ground(CLASS),
+          P == '_count',
+          (var(X);
+          integer(X),
+          X > 0),
+          getconfig(timeout, Time),
+          (Time == '*' ->
+          findall(OBJ, 'PREFIX is_q_membership'(MOD, OBJ, CLASS), LIST);
+          Timeout is round(Time * 1000),
+          catch(timed_call(findall(OBJ, 'PREFIX is_q_membership'(MOD, OBJ, CLASS),
+              LIST), [max(Timeout, throw(limit)), nesting]), limit, X = '*')),
+          (X == '*' ->
+          writeln('Timeout: The answer is undefined');
+          sort(LIST, SORTED),
+          dropvars(SORTED, NEWLIST),
+          length(NEWLIST, X),
+          X > 0),
+          !.
+
+% _var/0 (? object, ? boolean)
+% This property succeeds iff the object is non grounded variable.
+
+'PREFIX is_q_untproperty'(_MOD, OBJ, PROP, ANS) :- PROP == '_var',
+                                   (var(OBJ) ->
+                                   ANS = true;
+                                   ANS = false).
+
+% _equal/0 (? object1, ? object2)
+% This property succeeds iff the objects are address equal.
+
+'PREFIX is_q_untproperty'(_MOD, OBJ, PROP, ANS) :- PROP == '_equal',
+                                   OBJ == ANS.
+
+% _ground/0 (? object, ? boolean)
+% This property succeeds iff the object is fully grounded.
+
+'PREFIX is_q_untproperty'(_MOD, OBJ, PROP, ANS) :- PROP == '_ground',
+                                   (ground(OBJ) ->
+                                   ANS = true;
+                                   ANS = false).
+
+% _equal/0 (? object1, ? object2)
+% This property succeeds iff the objects are address equal.
+
+'PREFIX is_q_untproperty'(_MOD, OBJ, PROP, ANS) :- PROP == '_equal',
+                                   OBJ == ANS.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dropvars/2 (+ input list, - output list).
+% This predicate removes pairs from the list, if at least one element is a
+% variable.
+
+dropvars([], []).
+dropvars([V|LIST], [V|NEWLIST]) :- nonvar(V),
+                         !,
+                         dropvars(LIST, NEWLIST).
+dropvars([_|LIST], NEWLIST) :- dropvars(LIST, NEWLIST).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% droppairsvars/2 (+ input list, - output list).
+% This predicate removes pairs from the list, if at least one element is a
+% variable.
+
+droppairsvars([], []).
+droppairsvars([(V, W)|LIST], [(V, W)|NEWLIST]) :- nonvar(V),
+                                  nonvar(W),
+                                  !,
+                                  droppairsvars(LIST, NEWLIST).
+droppairsvars([_|LIST], NEWLIST) :- droppairsvars(LIST, NEWLIST).

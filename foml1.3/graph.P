@@ -1,0 +1,56 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+'_^pathlp_247_ q_property MODNAME'((_Va), (compose(_Vmod, _Vid, _Visnode, _Visedge, _Ve1, _Ve2)), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Va, _Ve1, _Vmid)))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vmid, _Ve2, _Vb))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (compose(_Vmod, _Vid, _Visnode, _Visedge, _Ve1, _Ve2, _Vmid)), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Va, _Ve1, _Vmid)))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vmid, _Ve2, _Vb))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (compose(_Vmod, _Vid, _Visnode, _Visedge, _Ve1)), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Va, _Ve1, _Vmid)))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vmid, _Ve1, _Vb))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (accessible(_Vmod, _Vid, _Visnode, _Visedge)), (_Vc)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Va), (accessible(_Vmod, _Vid, _Visnode, _Visedge, _V_path)), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'((_Va), (single_label_accessible(_Vmod, _Vid, _Visnode, _Visedge, _Ve)), (_Vc)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Va), (single_label_accessible(_Vmod, _Vid, _Visnode, _Visedge, _Ve, _V_path)), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'((_Va), (accessible(_Vmod, _Vid, _Visnode, _Visedge, [_Va])), (_Va)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visnode), (_Va)))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (accessible(_Vmod, _Vid, _Visnode, _Visedge, [_Va, _Vc|_Vrest])), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), (((((node(_Vaname)) = (_Va))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vaname, _V56, _Vcname)))), (((((node(_Vcname)) = (_Vc))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (accessible(_Vmod, _Vid, _Visnode, _Visedge, [_Vc|_Vrest])), (_Vb))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Va))))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Vc)))))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (single_label_accessible(_Vmod, _Vid, _Visnode, _Visedge, _Ve, [_Va])), (_Va)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge, _Ve)), ('_ground'), (true))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visnode), (_Va)))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (single_label_accessible(_Vmod, _Vid, _Visnode, _Visedge, _Ve, [_Va, _Vc|_Vrest])), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), (((((node(_Vaname)) = (_Va))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vaname, _Ve, _Vcname)))), (((((node(_Vcname)) = (_Vc))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (accessible(_Vmod, _Vid, _Visnode, _Visedge, _Ve, [_Vc|_Vrest])), (_Vb))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Va))))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Vc)))))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (accessible_edges(_Vmod, _Vid, _Visnode, _Visedge, [ ])), (_Va)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visnode), (_Va)))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (accessible_edges(_Vmod, _Vid, _Visnode, _Visedge, [_Ve|_Vrest])), (_Vb)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), (((((node(_Vaname)) = (_Va))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vaname, _Ve, _Vcname)))), (((((node(_Vcname)) = (_Vc))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (accessible_edges(_Vmod, _Vid, _Visnode, _Visedge, _Vrest)), (_Vb))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Ve)))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (cycle(_Vmod, _Vid, _Visnode, _Visedge)), (true)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), (((((node(_Vaname)) = (_Va))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vaname, _V57, _Vcname)))), (((((node(_Vcname)) = (_Vc))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (accessible(_Vmod, _Vid, _Visnode, _Visedge)), (_Va)))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (cycle_nodes(_Vmod, _Vid, _Visnode, _Visedge)), ([_Va|_Vcycle])) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), (((((node(_Vaname)) = (_Va))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vaname, _V58, _Vcname)))), (((((node(_Vcname)) = (_Vc))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (accessible(_Vmod, _Vid, _Visnode, _Visedge, _Vcycle)), (_Va)))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (cycle_edges(_Vmod, _Vid, _Visnode, _Visedge)), ([_Ve|_Vcycle])) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), (((((node(_Vaname)) = (_Va))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Vaname, _Ve, _Vcname)))), (((((node(_Vcname)) = (_Vc))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (accessible_edges(_Vmod, _Vid, _Visnode, _Visedge, _Vcycle)), (_Va)))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (single_label_cycle(_Vmod, _Vid, _Visnode, _Visedge)), (_Ve)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Va, _Ve, _Vb)))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vb), (single_label_accessible(_Vmod, _Vid, _Visnode, _Visedge, _Ve)), (_Va)))))).
+'_^pathlp_247_ q_property MODNAME'((_Va), (single_label_cycle(_Vmod, _Vid, _Visnode, _Visedge, _Ve)), ([_Va|_Vcycle])) :- (('_^pathlp_247_ is_q_property'(MODNAME, (a(_Vmod, _Visnode, _Visedge)), ('_ground'), (true))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vid), (_Visedge), (edge(_Va, _Ve, _Vb)))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vb), (single_label_accessible(_Vmod, _Vid, _Visnode, _Visedge, _Ve, _Vcycle)), (_Va)))))).
+:- '_^pathlp_247_ abolish'(MODNAME).

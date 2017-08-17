@@ -1,0 +1,53 @@
+%%% Model
+
+% Generalization
+UnGraduate::Student;
+Graduate::Student;
+PhdGraduate::Graduate;
+MaGraduate::Graduate;
+Seminar::Course;
+
+% Associations
+Student!studies[Course]{1..*};
+Course!participates[Student]{1..*};
+anonassoc.props[participates^studies];
+
+Graduate!teaches[Course]{0..*};
+Course!taughtBy[Graduate]{0..*};
+teaching.props[teaches^taughtBy];
+
+% Attributes
+Course!points[Int]{1..1};
+
+Student!curPoints[Int]{1..1};
+Student!maxPoints[Int]{1..1};
+
+Seminar!topic[String]{1..10};
+
+% Model rules
+%%% A student can't teach and study the same course at the same time more than once,
+%%% and this one should be documented by the faculty.
+Graduate!teachesAndStudies[Course]{0..1};
+?stud.teachesAndStudies[?course] :- ?stud.teaches[?course], ?stud.studies[?course];
+%%% If PhdGraduate studies a course that is teached by Graduate student,
+%%% he will not get the academic points on it.
+PhdGraduate!withoutPoints[Course]{0..*};
+?stud.withoutPoints[?course] :- ?stud:PhdGraduate, ?stud.studies[?course].taughtBy[?teacher], ?teacher:Graduate;
+Student.pointsForCourse(Course)[Int];
+?stud.pointsForCourse(?course)[?points] :- ?stud.studies[?course],
+                                           if ?stud.withoutPoints[?course] then ?points = 0 else ?course.points[?points];
+
+% Constraints
+%%% UnGraduate and Graduate are disjoint in Student
+!- ?stud:UnGraduate, ?stud:Graduate;
+%%% PhdGraduate and MaGraduate are disjoint in Graduate
+!- ?stud:PhdGraduate, ?stud:MaGraduate;
+%%% All these are complete (one constraint for all)
+!- ?stud:Student, not ?stud:UnGraduate, not ?stud:PhdGraduate, not ?stud:MaGraduate;
+%%% Wrong teaching order
+!- ?course.taughtBy[?stud], ?stud:MaGraduate,
+   ?course.participatedBy[?stud], ?stud:PhdGraduate;
+%%% A seminar can't have more than two points
+!- ?course:Seminar, ?course.points[?p], ?p > 2;
+%%% A course can't have wrong points number
+!- ?course.points[?p], (?p < 0 or ?p > 10);

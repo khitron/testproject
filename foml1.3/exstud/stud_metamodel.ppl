@@ -1,0 +1,23 @@
+%%% Meta Model
+
+% DataTypes
+%%% Any used dataype should be defined here.
+String:DataType;
+Int:DataType;
+%%% The other possibility is making a list:
+%%% MM.DataTypes[[String, Int]];
+%%% The third possibility is definition of some common satatypes
+%%% ones in FOML module.
+
+% Classes
+%%% If there is a class that is not a part of generalization pair,
+%%% it should be defined explicitly here, using a fact
+%%% <class>:Class;
+%%% for each class.
+%%% The other possibility is making a list:
+%%% MM.Classes[[<class>, <anotherclass>]];
+
+% Meta model rules
+%%% Properties that are connected to the Course class
+%%% (stupid, only to show that meta inference rules should be here)
+?p.connectedToCourse[true] :- Course!?p[?];

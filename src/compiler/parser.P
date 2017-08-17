@@ -1,0 +1,680 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the compiler parser file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ * The input: Token list, as output of scanner.P scanner.
+ * The output: Parsing tree, as input of semantic.P semantic analyzer.
+ * Consists two parts: rules and grammar.
+ */
+
+% Module namespace directives.
+
+:- export parser/3.
+:- table unguardobj/3, unguardtype/3, term/3.
+:- import pln/0, gensym/2, takestr/2 from module.
+:- import member/2, length/2 from basics.
+
+% XSB preprocessor definitions.
+
+:- compiler_options([spec_off, xpp_on]).
+
+#define PREFIX _^pathlp_247_
+#mode nostring "\!#'"
+#include "builtinslist.P"
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Parser (rules).
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part is the compiler parser.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% parser/3 (+ tokens list, - parsing tree, + input kind)
+% This predicate is the compiler parser.
+
+% Ignore the first line of an executable.
+parser([caller], [], file) :- !.
+% Parse from file.
+parser(INPUT, EXPR, file) :- parse(EXPR, INPUT, []),
+                     !.
+% Parse from command line.
+parser(INPUT, EXPR, main) :- parsestdin(EXPR, INPUT, []),
+                     !.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkterm/1 (+ branch)
+% This predicate checks if the input isn't an 'at' pair.
+
+checkterm(X) :- X \= pair(_, _).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% replace/4 (+ query expression, + old variable, + new variable name,
+% - new query expression)
+% This predicates replaces in AST all appearances of VAR to var('_', NAME).
+ 
+replace(EXPR, VAR, NAME, NEWEXPR) :- EXPR == VAR,
+                         !,
+                         NEWEXPR = var('_', NAME).
+replace(EXPR, VAR, NAME, NEWEXPR) :- compound(EXPR),
+                         EXPR =.. [PRED|LIST],
+                         !,
+                         replacelist(LIST, VAR, NAME, NEWLIST),
+                         NEWEXPR=..[PRED|NEWLIST].
+replace(EXPR, _, _, EXPR).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% replacelist/4 (+ query expressions list, + old variable, + new variable name,
+% - new query expressions list)
+% This predicates replaces in AST lisr all appearances of VAR to var('_', NAME).
+
+replacelist([], _, _, []).
+replacelist([A|B], VAR, NAME, [C|D]) :- replace(A, VAR, NAME, C),
+                            replacelist(B, VAR, NAME, D).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Parser (grammar).
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part is parser grammar.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% parse/3 (- parsing tree)
+% This predicate is parser grammar start S state from file.
+
+parse(X) --> rule(X);
+         fact(X);
+         constraint(X);
+         query(X);
+         directive(X);
+% Whole backquoted line.
+         term(X),
+         {X = const(stamp([chunk(_)]))};
+% Parser error.
+         {pln,
+         writeln(2, 'ERROR: Parser problem'),
+         fail}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% parsestdin/3 (- parsing tree)
+% This predicate is parser grammar start S state from command line.
+
+parsestdin(X) --> querystdin(X);
+            query(X);
+% Whole backquoted line.
+            term(X),
+            {X = const(stamp([chunk(_)]))};
+% Parser error.
+            {pln,
+            writeln(2, 'ERROR: Parser problem'),
+            fail}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% querystdin/3 (- branch)
+% This predicate parses command line query without starting special symbols.
+
+querystdin(query(print(X))) --> queryformula(X),
+                      [infix(;)].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% query/3 (- branch)
+% This predicate parses both kinds of queries.
+
+% Printed query.
+query(query(print(X))) --> [printquery],
+                   !,
+                   (queryformula(X),
+                   [infix(;)];
+                   {pln,
+                   writeln(2, 'ERROR: Wrong query'),
+                   fail}).
+% Silent query.
+query(query(silent(X))) --> [query],
+                    !,
+                    (queryformula(X),
+                    [infix(;)];
+                    {pln,
+                    writeln(2, 'ERROR: Wrong query'),
+                    fail}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% directive/3 (- branch)
+% This predicate parses colon hyphen directive from file.
+
+directive(directive(X)) --> [infix(:-)],
+                    !,
+                    (queryformula(X),
+                    [infix(;)];
+                    {pln,
+                    writeln(2, 'ERROR: Wrong directive'),
+                    fail}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% constraint/3 (- branch)
+% This predicate parses constraint.
+
+constraint(constraint(X, Name)) --> ([str(Name)];
+                    {Name = unnamed}),
+                    [constraint],
+                    !,
+                    (queryformula(X),
+                    [infix(;)];
+                    {pln,
+                    writeln(2, 'ERROR: Wrong constraint'),
+                    fail}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% fact/3 (- branch)
+% This predicate parses fact.
+
+fact(fact(X)) --> consequent(X),
+            [infix(;)].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% rule/3 (- branch structure (consequent, query))
+% This predicate parses rule.
+
+rule(rule(X, Y)) --> consequent(X),
+               [infix(:-)],
+               !,
+               (queryformula(Y),
+               [infix(;)];
+               {pln,
+               writeln(2, 'ERROR: Wrong rule'),
+               fail}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% queryformula/3 (- branch)
+% This predicate parses query formula at first stage - "or" statement priority.
+
+queryformula(orb(X, Y)) --> orelem(X),
+                    [or],
+                    queryformula(Y).
+queryformula(X) --> orelem(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% orelem/3 (- branch)
+% This predicate parses query formula at second stage - "and" statement
+% priority.
+
+orelem(andb(X, Y)) --> andelem(X),
+                 ([and];
+                 [comma]),
+                 orelem(Y).
+orelem(X) --> andelem(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% andelem/3 (- branch)
+% This predicate parses query formula at third and last stage - "not" statement,
+% backslashed plus "not" statement, and parentheses.
+
+andelem(notb(X)) --> [not],
+               andelem(X).
+andelem(notp(X)) --> [backplus],
+               andelem(X).
+andelem(X) --> [leftparen],
+           queryformula(X),
+           [rightparen].
+andelem(X) --> elementaryformula(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% elementaryformula/3 (- branch)
+% This predicate parses query elementary formula for module system.
+
+elementaryformula(X) --> moduledformula(X),
+                 !;
+                 unmoduledformula(X);
+                 builtin(X);
+                 if(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% unmoduledformula/3 (- branch)
+% This predicate parses query elementary formula.
+                 
+unmoduledformula(X) -->  untmembership(X);
+                 membership(X);
+                 subclass(X);
+                 assignment(X);
+                 comparison(X);
+                 guardpathexpr(X);
+                 cut(X);
+% Special forms.
+                 term(A),
+                 {member(A, [pair(_, _), const(infix(_, is, _)),
+                         const(infix(_, =.., _)),
+                         const(infix(_, ->, _)), const(stamp(_))]),
+                 X = A;
+% Load file to emptied space (different or same module).
+                 A = const(list([const(list(B))], C)),
+                 X = const(compound(const(pred(bin)),
+                     [const(compound(const(pred(loadnew)),
+                     [const(list(B)), C]))]));
+                 A = const(list([const(list(B))])),
+                 X = const(compound(const(pred(bin)),
+                     [const(compound(const(pred(loadnew)),
+                     [const(list(B))]))]));
+% Load file to same space (different or same module).
+                 A = const(list(B, C)),
+                 X = const(compound(const(pred(bin)),
+                     [const(compound(const(pred(load)),
+                     [const(list(B)), C]))]));
+                 A = const(list(_)),
+                 X = const(compound(const(pred(bin)),
+                     [const(compound(const(pred(load)), [A]))]))}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% builtin/3 (- branch)
+% This predicate parses application builtin predicate.
+
+% Arity 1+.                 
+builtin(X) --> term(Y),
+           {Y = const(compound(const(pred(A)), B)),
+           length(B, C),
+           builtin(A / C),
+           X = const(compound(const(pred(bin)), [Y]))}.
+% Arity 0.
+builtin(X) --> term(Y), 
+           {Y = const(pred(A)),
+           builtin(A / 0),
+           X = const(compound(const(pred(bin)), [Y]))}.
+
+% Aggregation.
+builtin(const(compound(const(pred(bin)), [const(compound(const(pred(AGGR)),
+                      [var('_', NEWVAR), const(list(GRVARS)), NEWQUERY, RES]))]))) -->
+                                 [str(PAGGR), leftparen, VAR],
+                                 {takestr(PAGGR, AGGR),
+                                 aggr(AGGR),    % Right operator
+                                 VAR = var(_, _)},
+                                 aggrgrlist(GRVARS),
+                                 [comma],
+                                 queryformula(QUERY),
+                                 [comma], 
+                                 [RES],
+                                 {RES = var(_, _)},
+                                 [rightparen],
+                                 {gensym('_A', NEWVAR),
+                                 replace(QUERY, VAR, NEWVAR, NEWQUERY)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% aggrgrlist/3 (- branch list)
+% This predicate parses aggregation grouping variables list.
+
+aggrgrlist([]) --> [].
+aggrgrlist([X|Y]) --> [comma, X],
+                {X = var(_, _)},
+                aggrgrlist(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% if/3 (- branch)
+% This predicate parses if statement.
+
+if(const(compound(const(pred(bin)), [const(compound(const(pred(if)), [COND,
+                                         THEN, ELSE]))]))) -->
+                                    [str(if)],
+                                    queryformula(COND),
+                                    [str(then)],
+                                    queryformula(THEN),
+                                    [str(else)],
+                                    queryformula(ELSE).
+if(const(compound(const(pred(bin)), [const(compound(const(pred(if)), [COND,
+      THEN, const(compound(const(pred(bin)), [const(pred(false))]))]))]))) -->
+                                    [str(if)],
+                                    queryformula(COND),
+                                    [str(then)],
+                                    queryformula(THEN).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% _true, _undefined, _false/1 (- branch)
+% This predicate parses iftrue statement.
+
+if(const(compound(const(pred(bin)), [const(compound(const(pred(CODE)), [COND]))]))) -->
+                                    {member((IF, CODE), [('_true', istrue), ('_undefined', isundefined), ('_false', iffalse)])},
+                                    [str(p(IF))],
+                                    queryformula(COND).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% moduledformula/3 (- branch)
+% This predicate parses query elementary formula in some dynamic module.
+
+moduledformula(moduled(X, MOD)) --> unmoduledformula(X),
+                        {X =.. [Y|_],
+                        member(Y, [membership, subclass, assignment,
+                            makeobj, makeuntobj, obj, maketype,
+                            card, untmembership])},
+                        readmodule(MOD).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% readmodule/2 (- branch)
+% This predicate parses the 'at' module name.
+                 
+readmodule(B) --> [module],
+            term(B),
+            {B = const(pred(_))}.
+
+readmodule(B) --> [module],
+            term(B),
+            {B = var(_, _)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% consequent/3 (- branch)
+% This predicate parses left rule part and fact.
+
+consequent(X) --> untmembership(X);
+                  membership(X);
+            subclass(X);
+            assignment(X);
+% Only short path expressions.
+            makepath(X),
+            {member(X, [makeobj(_, _, _), maketype(_, _, _, _, _)])};
+% makespecobj
+            makepath(Y),
+            {Y = obj(edge(obj(node(A), []), B), C), speccheck(C, CC), X = makespecobj(A, B, CC)};
+% makespectype
+            makepath(Y),
+            {Y = card(type(node(A), []), B, C, D, E), speccheck(C, CC), X = makespectype(A, B, CC, D, E)};
+% Special forms.
+            term(X),
+            {X = const(infix(_, -->, _))}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% speccheck/2 (+ list, - newlist)
+% This predicate checks a spec.
+
+speccheck([], []).
+speccheck([obj(node(A), [])|B], [A|BB]) :- speccheck(B, BB).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cut/3 (- branch)
+% This predicate parses a cut.
+
+cut(cut) --> [screamer].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% membership/3 (- branch)
+% This predicate parses a membership relationship.
+
+membership(membership(X, Y)) --> term(X),
+                       {checkterm(X)},
+                       [infix(:)],
+                       term(Y),
+                       {checkterm(Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% untmembership/3 (- branch)
+% This predicate parses an untabled membership relationship.
+
+untmembership(untmembership(X, Y)) --> term(X),
+                           {checkterm(X)},
+                           [infix(:)],
+                           [dot],
+                           term(Y),
+                           {checkterm(Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% subclass/3 (- branch)
+% This predicate parses a subclass relationship.
+
+subclass(subclass(X, Y)) --> term(X),
+                     {checkterm(X)},
+                     [doublecolon],
+                     !,
+                     term(Y),
+                     {checkterm(Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% assignment/3 (- branch)
+% This predicate parses a logical equality relationship.
+
+assignment(assignment(X, Y)) --> term(X),
+                       {checkterm(X)},
+                       [ass],
+                       !,
+                       term(Y),
+                       {checkterm(Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% guard/3 (- branch list)
+% This predicate parses guard unguarded path expressions list start.
+
+guard([X|Y]) --> [leftbracket],
+             guardelem(X),
+             guardlist(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% guardlist/3 (- branch list)
+% This predicate parses guard unguarded path expressions list recursive stage.
+
+guardlist([X|Y]) --> [comma],
+               !,
+               guardelem(X),
+               guardlist(Y).
+guardlist([]) --> [rightbracket].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% guardelem/3 (- branch)
+% This predicate parses one unguarded path expression in guard list.
+
+guardelem(X) --> objexpr(Y),
+             {Y = obj(edge(obj(node(A), []), B), []),
+             X = makeobj(A, B, _);
+             Y = obj(untedge(obj(node(A), []), B), []),
+             X = makeuntobj(A, B, _);
+             Y = obj(_, []),
+             X = Y}.
+guardelem(X) --> typeexpr(Y),
+             {Y = type(edge(type(node(A), []), B), []),
+             X = maketype(A, B, _, _, _);
+             Y = type(edge(_, _), []),
+             X = Y}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cardinality/4 (- minor, - major)
+% This predicate parses type expression cardinality constraint borders.
+
+cardinality(X, Y) --> [leftcurly],
+                !,
+                ([int(Z)],
+                {X = const(number(Z))};
+                [X],
+                {X = var(_, _)}),
+                [doubledot],
+                ([int(T)],
+                {T >= 0,
+                (integer(Z) ->
+                T >= Z;
+                otherwise),
+                Y = const(number(T))};
+                [infix(*)],
+                {Y = const(number(asterisk))};
+                [Y],
+                {Y = var(_, _)}),
+                [rightcurly].
+cardinality(const(number(0)), const(number(asterisk))) --> [].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% comparison/3 (- branch structure (sign, left, right))
+% This predicate parses comparisons as non-equal, less, grate-equal and so on.
+
+comparison(compare(X, Y, Z)) --> term(Y),
+                       {checkterm(Y)},
+                       opt(X),
+                       term(Z),
+                       {checkterm(Z)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% makepath/3 (- branch)
+% This predicate parses path expression and shortens it if possible.
+
+makepath(X) --> pathexpr(Y),
+            {(Y = obj(edge(obj(node(A), []), B), [obj(node(C), [])]),
+            !,
+            X = makeobj(A, B, C));
+            (Y = obj(untedge(obj(node(A), []), B), [obj(node(C), [])]),
+            !,
+            X = makeuntobj(A, B, C));
+            (Y = card(type(node(A), []), B, [obj(node(C), [])], D, E),
+            !,
+            X = maketype(A, B, C, D, E));
+            X = Y}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pathexpr/3 (- branch)
+% This predicate parses path expression.
+
+pathexpr(X) --> objexpr(X);
+            cardtypeexpr(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% objexpr/3 (- branch structure (path, guard))
+% This predicate parses object path expression, unguarded and guarded.
+
+objexpr(obj(X, Y)) --> unguardobj(X),
+                 {Y = []}.
+objexpr(obj(X, Y)) --> unguardobj(X),
+                 {X \= node(_)},
+                 guard(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% unguardobj/3 (- branch) (tabled)
+% This predicate parses non guarded part of object path expression.
+
+unguardobj(node(Y)) --> term(Y),
+                {checkterm(Y)}.
+% Edge structure (source, property).
+unguardobj(edge(X, Y)) --> objexpr(X),
+                   [dot],
+                   term(Y),
+                   {checkterm(Y)}.
+unguardobj(untedge(X, Y)) --> objexpr(X),
+                    [doubledot],
+                    term(Y),
+                    {checkterm(Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cardtypeexpr/3 (- branch structure (source, property, target, minor, major))
+% This predicate parses type path expression as regular and cardinality parts.
+
+cardtypeexpr(card(X, Y, Z, U, V)) --> typeexpr(type(edge(X, Y), Z)),
+                          cardinality(U, V).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% typeexpr/3 (- branch structure (path, guard))
+% This predicate parses type path expression, unguarded and guarded.
+
+typeexpr(type(X, Y)) --> unguardtype(X),
+                 {Y = []}.
+typeexpr(type(X, Y)) --> unguardtype(X),
+                 {X \= node(_)},
+                 guard(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% unguardtype/3 (- branch) (tabled)
+% This predicate parses non guarded part of type path expression.
+
+unguardtype(node(Y)) --> term(Y),
+                 {checkterm(Y)}.
+unguardtype(edge(X, Y)) --> typeexpr(X),
+                    [screamer],
+                    term(Y),
+                    {checkterm(Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% guardpathexpr/3 (- branch)
+% This predicate parses guarded path expression for query elementary formula.
+
+guardpathexpr(X) --> makepath(X),
+               {\+ member(X, [obj(_, []), card(_, _, [], _, _)])}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% term/3 (- branch) (tabled)
+% This predicate parses expression term.
+
+% Predicates pwrite and non-zero arguments pwriteln macro expansion.
+% Prolog at character call, pair structure (predicate, module).
+term(pair(X, Y)) --> term(X),
+               [module],
+               term(Y),
+               {member(X, [const(pred(_)),
+               const(compound(const(pred(_)), [_|_]))]),
+               member(Y, [const(pred(_)), var(_, _)])}.
+% Parentheses for priority.
+term(paren(X)) --> [leftparen],
+             term(X),
+             [rightparen].
+% Variable.
+term(var(X, Y)) --> [var(X, Y)].
+% Constant.
+term(X) --> const(X).
+% Compound term (here for tabling).
+term(const(compound(X, Y))) --> const(X),
+                      {X = const(pred(_))},
+                      [leftparen],
+                      termlist(Y),
+                      [rightparen].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% termlist/3 (- branch list)
+% This predicate parses expression terms list.
+
+termlist([]) --> [].
+termlist([X|Y]) --> term(X),
+              listelems(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% listelems/3 (- branch list)
+% This predicate parses expression terms list, element on recursion call.
+
+listelems([]) --> [].
+listelems([X|Y]) --> [comma],
+               term(X),
+               listelems(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% const/3 (- branch)
+% This predicate parses constant expression term.
+
+% List, regular and open ended.
+const(const(X)) --> [leftbracket],
+              termlist(Y),
+              ([rightbracket],
+              {X = list(Y)};
+              {Y = [_|_]},
+              [pipe],
+              term(Z),
+              [rightbracket],
+              {checkterm(Z),
+              X = list(Y, Z)}).
+% Atom.
+const(const(pred(X))) --> [str(X)].
+% Number.
+const(const(number(X))) --> ([];
+                    [infix(+)]),
+                    ([int(X)];
+                    [float(X)]).
+const(const(number(X))) --> [infix(-)],
+                    ([int(Y)];
+                    [float(Y)]),
+                    {X is -Y}.
+const(const(number(asterisk))) --> [infix(*)].
+% Prolog received pieces.
+const(const(stamp(X))) --> [stamp(X)].
+% Infix expression.
+const(const(infix(X, Y, Z))) --> term(X),
+                       [infix(Y)],
+                       term(Z),
+                       {checkterm(X),
+                       checkterm(Z)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% opt/1 (- option name)
+% This predicate parses comparison options signs.
+
+opt(lessequal) --> [infix(=<)].
+opt(grateequal) --> [infix(>=)].
+opt(equal) --> [infix(=)].
+opt(less) --> [infix(<)].
+opt(grate) --> [infix(>)].
+opt(nonequal) --> [nonequal].

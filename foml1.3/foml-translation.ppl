@@ -1,0 +1,133 @@
+%%%% Constraints
+foml_constraint !- MODNAME.constraint[?usecase]@foml;
+%
+%%% Bridge rules
+
+?x:?y :- ?x.member(MODNAME)[?y]@foml;
+?x::?y :- ?x.sub(MODNAME)[?y]@foml;
+
+?p.classes(?source, ?min, ?max)[?target] :- ?p.classes(?source, ?min, ?max, MODNAME)[?target]@foml;
+?c.attr(?attr)[?type] :- ?c.attr(?attr, MODNAME)[?type]@foml;
+
+?c.dirsub[?c1] :- ?c.dirsub(MODNAME)[?c1]@foml;
+?c.dirmmb[?c1] :- ?c.dirmmb(MODNAME)[?c1]@foml;
+
+?p.source[?c] :- ?p.source(MODNAME)[?c]@foml;
+?p.target[?c] :- ?p.target(MODNAME)[?c]@foml;
+?p.min[?c] :- ?p.min(MODNAME)[?c]@foml;
+?p.max[?c] :- ?p.max(MODNAME)[?c]@foml;
+?c.property(?p)[?c1] :- ?c.property(?p, MODNAME)[?c1]@foml;
+?c.property[?p] :- ?c.property(MODNAME)[?p]@foml;
+?a.prop(?p)[?c] :- ?a.prop(?p, MODNAME)[?c]@foml;
+
+?o.link(OR(?p1, ?p2))[?o1] :- ?o.link(OR(?p1, ?p2, MODNAME))[?o1]@foml;
+?o.link(AND(?p1, ?p2))[?o1] :- ?o.link(AND(?p1, ?p2, MODNAME))[?o1]@foml;
+?o.link(NOT(?p))[?o1] :- ?o.link(NOT(?p, MODNAME))[?o1]@foml;
+
+?c1.path(?path)[?c2] :- ?c1.path(?path, MODNAME)[?c2]@foml;
+?c1.cycle[?c2] :- ?c1.cycle(MODNAME)[?c2]@foml;
+
+?c1.compose(?p, ?p1)[?c3] :- ?c1.compose(?p, ?p1, MODNAME)[?c3]@foml;
+?c1.compose(?p, ?c2, ?p1)[?c3] :- ?c1.compose(?p, ?c2, ?p1, MODNAME)[?c3]@foml;
+?x.closure(?e)[?y] :- ?x.closure(?e, MODNAME)[?y]@foml;
+
+%%% Association vs property
+?p.classes(?source)[?target] :- ?p.classes(?source, MODNAME)[?target]@foml;
+
+?p.classes(?source, ?min, ?max)[?target] :- ?a.prop(?p, ?min, ?max)[?target],
+                                            ?a.prop(?p1, ?, ?)[?source],
+                                            ?p != ?p1;
+
+?p.inverse[?p1] :- ?p1.inverse[?p];
+
+%%% Type path expressions.
+Property!source[Class]{1..1};
+Property!target[Class]{1..1};
+Property!min[Integer]{1..1};
+Property!max[Integer]{1..1};
+Property!inverse[Property]{0..1};
+Class!property[Property]{0..*};
+Property!classes(?, ?, ?)[Class]{1..1};
+
+%%%%%
+%?c!?l[?c1]{?min..?max} :- ?l.classes(?c, ?min, ?max)[?c1],
+%                          ?c:Class,
+%                          ?c1:Class;
+
+%?c!attr(?attr)[?Type]{1..1} :- ?c:Class,
+%                               ?c!attr(?attr)[?Type];
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+!- ?x.prop[?^?],
+   ?x._var[true];
+
+?a.prop(?prop, ?min, ?max)[?target] :-
+	take.data[d(?data)],
+	?source:Class,
+	?source!?prop[?target]{?min..?max}@?data,
+        not ?target:DataType,
+        (?a.props[?prop^?] or
+	 ?a.props[?^?prop]),
+	not (?source!?prop[?c]@?data,
+	     ?c::?target@?data);
+
+?source.property(?prop, ?min, ?max)[?target] :-
+	take.data[d(?data)],
+	?source:Class,
+	?source!?prop[?target]{?min..?max}@?data,
+        not ?target:DataType,
+        (?a.props[?prop^?] or
+	 ?a.props[?^?prop]),
+	not (?source!?prop[?c]@?data,
+	     ?c::?target@?data);
+
+?p.inverse[?p1] :-
+	?.props[?p^?p1];
+
+?a.props[?p1^?p2] :-
+	take.data[d(?data)],
+	?a0.props[?p1^?p2]@?data,
+        if ?a0 = anonassoc then ?a = assoc(?p1, ?p2) else ?a = ?a0;
+	%((?a0 = anonassoc, ?a = assoc(?p1, ?p2))
+         %or
+	 %(?a0 != anonassoc, ?a = ?a0));
+
+?c:Class :-
+	take.data[d(?data)],
+	(?c::?@?data or
+	?::?c@?data);
+
+?source.attr(?attr, ?min, ?max)[?type] :-
+        take.data[d(?data)],
+        ?source:Class,
+        ?source!?attr[?type]{?min..?max}@?data,
+        ?type:DataType;
+
+take.data[d(?data)] :- ?meta = MODNAME,
+                       atom_concat(m, ?model, ?meta)@_prolog,
+                       atom_concat(d, ?model, ?data)@_prolog;
+
+?sub::?super :-
+        take.data[d(?data)],
+        ?sub::?super@?data;
+
+?o:?x:- take.data[d(?data)],
+        ?o:?x@?data;
+
+?o.link(?link)[?o1] :-
+        take.data[d(?data)],
+        ?c:Class,
+        ?o:?c,
+        ?o.?link[?o1]@?data,
+        not (?o1:?c1, ?c1:DataType),
+        ?link != props;
+
+?o.attr(?attr)[?value] :-
+        take.data[d(?data)],
+        ?c:Class,
+        ?o:?c,
+        ?o.?attr[?value]@?data,
+        ?value:?c1,
+        ?c1:DataType,
+        ?attr != props;

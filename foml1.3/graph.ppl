@@ -1,0 +1,142 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the background theories file for path.
+ * It was created by Igal Khitron.
+ *
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%% Preconditions
+% There are usual parameters: ?mod, ?id, ?isnode, ?isedge.
+% Call ?id.?isnode[?n]@?mod if and only if ?n is node in graph ?id.
+% Call ?id.?isedgenode[[?from, ?e, ?to]]@?mod if and only if ?e is edge
+% in graph ?id, with ?from as source and ?to as target,
+% and ?from and ?to are indeed nodes in this graph.
+
+%%%%%%%%%%%
+% Compose %
+%%%%%%%%%%%
+% Edge composition in a directed graph: for nodes a, mid, b, and edges e1, e2:
+% iff a--e1-->mid--e2-->b then a--compose(e1,e2)-->b
+% There are 3 versions: one that does not preserves the mid node,
+% one that does, and one that composes only edges with the same label.
+
+?a.compose(?mod, ?id, ?isnode, ?isedge, ?e1, ?e2)[?b] :-
+                                        a(?mod, ?isnode, ?isedge)._ground[true],
+                                        ?id.?isedge[edge(?a, ?e1, ?mid)]@?mod,
+                                        ?id.?isedge[edge(?mid, ?e2, ?b)]@?mod;
+
+?a.compose(?mod, ?id, ?isnode, ?isedge, ?e1, ?e2, ?mid)[?b] :-
+                                        a(?mod, ?isnode, ?isedge)._ground[true],
+                                        ?id.?isedge[edge(?a, ?e1, ?mid)]@?mod,
+                                        ?id.?isedge[edge(?mid, ?e2, ?b)]@?mod;
+
+?a.compose(?mod, ?id, ?isnode, ?isedge, ?e1)[?b] :-
+                                        a(?mod, ?isnode, ?isedge)._ground[true],
+                                        ?id.?isedge[edge(?a, ?e1, ?mid)]@?mod,
+                                        ?id.?isedge[edge(?mid, ?e1, ?b)]@?mod;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Accessibility relations in a directed graph.
+% There are several versions. All follow paths between nodes.
+% They differ by whether they collect intermediate nodes or edges,
+% and whether they are restricted to follow only edges with teh same label.
+% There are two possibilities of reasoning for accessibility and cycle:
+% by any edge or by particylar edge (the last one is marked
+% by single_label property prefix).
+
+%%%%%%%%%%%%%%
+% Accessible %
+%%%%%%%%%%%%%%
+% Existence of a path between nodes (closure of the edge relation).
+% There are 3 versions: Two that together with every pair of accessible nodes
+% preserves the accessibility path of edges or nodes, and one that does not.
+% If the graph is cyclic, the accessibility path must be followed, in order
+% to prevent infinite number of answers.
+
+?a.accessible(?mod, ?id, ?isnode, ?isedge)[?c] :-
+                         ?a.accessible(?mod, ?id, ?isnode, ?isedge, ?_path)[?c];
+
+?a.single_label_accessible(?mod, ?id, ?isnode, ?isedge, ?e)[?c] :-
+        ?a.single_label_accessible(?mod, ?id, ?isnode, ?isedge, ?e, ?_path)[?c];
+
+% Collecting nodes
+% Accessible nodes are related with a simple (no cycles) node-path between them
+% (including the related nodes).
+
+?a.accessible(?mod, ?id, ?isnode, ?isedge, [?a])[?a] :-
+                                        a(?mod, ?isnode, ?isedge)._ground[true],
+                                        ?id.?isnode[?a]@?mod;
+?a.accessible(?mod, ?id, ?isnode, ?isedge, [?a, ?c|?rest])[?b] :-
+                     a(?mod, ?isnode, ?isedge)._ground[true],
+                     node(?aname) = ?a,
+                     ?id.?isedge[edge(?aname, ?, ?cname)]@?mod,
+                     node(?cname) = ?c,
+                     ?c.accessible(?mod, ?id, ?isnode, ?isedge, [?c|?rest])[?b],
+                     not ?rest._member[?a],
+                     not ?rest._member[?c];
+
+%Single label accessibility:
+
+?a.single_label_accessible(?mod, ?id, ?isnode, ?isedge, ?e, [?a])[?a] :-
+                                        a(?mod, ?isnode, ?isedge, ?e)._ground[true],
+                                        ?id.?isnode[?a]@?mod;
+?a.single_label_accessible(?mod, ?id, ?isnode, ?isedge, ?e, [?a, ?c|?rest])[?b] :-
+                     a(?mod, ?isnode, ?isedge)._ground[true],
+                     node(?aname) = ?a,
+                     ?id.?isedge[edge(?aname, ?e, ?cname)]@?mod,
+                     node(?cname) = ?c,
+                     ?c.accessible(?mod, ?id, ?isnode, ?isedge, ?e, [?c|?rest])[?b],
+                     not ?rest._member[?a],
+                     not ?rest._member[?c];
+
+% Collecting edges
+% Accessible nodes are related with a simple (no cycles) edge-path between them.
+?a.accessible_edges(?mod, ?id, ?isnode, ?isedge, [])[?a] :-
+                                        a(?mod, ?isnode, ?isedge)._ground[true],
+                                        ?id.?isnode[?a]@?mod;
+?a.accessible_edges(?mod, ?id, ?isnode, ?isedge, [?e|?rest])[?b] :-
+                    a(?mod, ?isnode, ?isedge)._ground[true],
+                    node(?aname) = ?a,
+                    ?id.?isedge[edge(?aname, ?e, ?cname)]@?mod,
+                    node(?cname) = ?c,
+                    ?c.accessible_edges(?mod, ?id, ?isnode, ?isedge, ?rest)[?b],
+                    not ?rest._member[?e];
+
+%%%%%%%%%
+% Cycle %
+%%%%%%%%%
+
+?a.cycle(?mod, ?id, ?isnode, ?isedge)[true] :-
+                                 a(?mod, ?isnode, ?isedge)._ground[true],
+                                 node(?aname) = ?a,
+                                 ?id.?isedge[edge(?aname, ?, ?cname)]@?mod,
+                                 node(?cname) = ?c,
+                                 ?c.accessible(?mod, ?id, ?isnode, ?isedge)[?a];
+
+?a.cycle_nodes(?mod, ?id, ?isnode, ?isedge)[[?a|?cycle]] :-
+                         a(?mod, ?isnode, ?isedge)._ground[true],
+                         node(?aname) = ?a,
+                         ?id.?isedge[edge(?aname, ?, ?cname)]@?mod,
+                         node(?cname) = ?c,
+                         ?c.accessible(?mod, ?id, ?isnode, ?isedge, ?cycle)[?a];
+
+?a.cycle_edges(?mod, ?id, ?isnode, ?isedge)[[?e|?cycle]] :-
+                   a(?mod, ?isnode, ?isedge)._ground[true],
+                   node(?aname) = ?a,
+                   ?id.?isedge[edge(?aname, ?e, ?cname)]@?mod,
+                   node(?cname) = ?c,
+                   ?c.accessible_edges(?mod, ?id, ?isnode, ?isedge, ?cycle)[?a];
+
+?a.single_label_cycle(?mod, ?id, ?isnode, ?isedge)[?e] :-
+                a(?mod, ?isnode, ?isedge)._ground[true], 
+                ?id.?isedge[edge(?a, ?e, ?b)]@?mod,
+                ?b.single_label_accessible(?mod, ?id, ?isnode, ?isedge, ?e)[?a];
+
+?a.single_label_cycle(?mod, ?id, ?isnode, ?isedge, ?e)[[?a|?cycle]] :-
+        a(?mod, ?isnode, ?isedge)._ground[true], 
+        ?id.?isedge[edge(?a, ?e, ?b)]@?mod,
+        ?b.single_label_accessible(?mod, ?id, ?isnode, ?isedge, ?e, ?cycle)[?a];

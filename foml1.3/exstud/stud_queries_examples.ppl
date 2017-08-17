@@ -1,0 +1,27 @@
+%%% Model querying example
+%%% Find all classes that are "can see" Course
+?- ?_p:Property@mstud, ?_p.target[Course]@mstud, ?_p.source[?class]@mstud;
+Answer: ?class=Graduate; ?class=Student
+%%% Find all classes that are conected to generalyzation pair by declaration
+?- ?c:Class@metadata, ?c.property(?, ?, ?)[?super]@metadata, ?c.property(?, ?, ?)[?sub]@metadata, ?sub::?super;
+Answer: ?c=Course, ?sub=Graduate, ?super=Student; ?c=Seminar, ?sub=Graduate, ?super=Student
+%%% Find all the "class;integer attribute" pairs in the model
+?- ?c:Class@metadata, ?c.attr(?attr)[Int];
+Answer: ?c = Student, ?attr = maxPoints; ?c = Student, ?attr = curPoints; ?c = Course, ?attr = points;
+ ?c = UnGraduate, ?attr = curPoints; ?c = UnGraduate, ?attr = maxPoints; ?c = Graduate, ?attr = curPoints;
+ ?c = Graduate, ?attr = maxPoints; ?c = PhdGraduate, ?attr = curPoints; ?c = PhdGraduate, ?attr = maxPoints;
+ ?c = MaGraduate, ?attr = curPoints; ?c = MaGraduate, ?attr = maxPoints; ?c = Seminar, ?attr = points;
+
+%%% Objects querying example
+%%% Has the student a teuda?
+?- ?stud.attr(curPoints)[?cp], ?stud.attr(maxPoints)[?mp], ?cp >= ?mp;
+Answer: false
+%%% Find all the courses that have no graduated teacher:
+?- ?course:Course, not (?course.link(taughtBy)[?_teacher], ?_teacher:Graduate);
+Answer: ?course = infi1; ?course = infi3; ?course = bigData;
+%%% Find all popular courses:
+?- ?course:Course, setof(?stud, ?stud.link(studies)[?course], ?studs), ?studs._length[?number], ?number > 1;
+Answer: ?course = bigData, ?studs = [Moshe,Rina], ?number = 2;
+%%% Find all graduated students that do not teach any course:
+?- ?stud:Graduate, not ?stud.teaches[?];
+Answer: false

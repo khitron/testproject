@@ -1,0 +1,10 @@
+:- [foml];
+:- newmodule(g);
+:- load(graph, g);
+:- newmodule(mstud);
+:- newmodule(dstud);
+:- load('exstud/stud_model.ppl', dstud);
+:- load('exstud/stud_object.ppl', dstud);
+:- load('exstud/stud_metamodel.ppl', mstud);
+:- load('foml-translation', mstud);
+:- module(dstud);

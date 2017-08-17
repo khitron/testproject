@@ -1,0 +1,36 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the program flowing builtins definition file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% true/0, otherwise/0, undefined/0, false/0, fail/0
+% These predicates are special language constants
+
+bin(true).
+bin(otherwise).
+bin(undefined) :- undefined.
+bin(false) :- fail.
+bin(fail) :- fail.
+
+% if/3 (+ condition, + do if true command, + do if false command)
+% This predicate defines "if" statement.
+
+bin(if(A, B, C)) :- A ->
+                    B;
+                    C.
+
+bin(istrue(A)) :- call_tv(A, true).
+bin(isundefined(A)) :- call_tv(A, undefined).
+bin(isfalse(A)) :- call_tv(A, _) ->
+                   fail;
+                   true.

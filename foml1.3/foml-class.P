@@ -1,0 +1,40 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+'_^pathlp_247_ q_property MODNAME'((_Vo), (member(_Vmod)), ('OR'(_Vx, _Vy))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vx), ('_var'), (false))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vy), ('_var'), (false))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vx), ('Class'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vy), ('Class'))), ((((fail_if((_Vx) = (_Vy)))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), (_Vx))); ('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), (_Vy)))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vo), (member(_Vmod)), ('AND'(_Vx, _Vy))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vx), ('_var'), (false))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vy), ('_var'), (false))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vx), ('Class'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vy), ('Class'))), ((((fail_if((_Vx) = (_Vy)))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), (_Vx))), ('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), (_Vy)))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vo), (member(_Vmod)), ('NOT'(_Vx))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vx), ('_var'), (false))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vx), ('Class'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), (_Vc1))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vc1), ('Class'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), (_Vx)))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vo), (member(_V53)), (_VclassOf)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_VclassOf), ('_var'), (false))), (((_VclassOf =.. [_Vname|_Vmembers]), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vname), ('_var'), (false))), (((((_Vname) = (classOf))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmembers), ('_member'), (_Vo)))))))))).
+:- '_^pathlp_247_ abolish'(MODNAME).

@@ -1,0 +1,412 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the compiler scanner file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ * The input: User text.
+ * The output: Token list, as input of parser.P parser.
+ * Consists two parts: rules and grammar.
+ */
+
+% Module namespace directives.
+
+:- export scanner/2, delimiter/3, caller/3, letter/3.
+:- import pln/0, getconfig/2, gensym/2 from module.
+:- import append/3, member/2 from basics.
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Scanner (rules).
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% scanner(+ input, - tokens)
+% This predicate is the compiler scanner.
+
+% End of input.
+scanner([], []) :- !.
+% Ignore all kind of delimiters.
+scanner(INPUT, TOKENS) :- delimiter(_, INPUT, REST),
+                          !,
+                          scanner(REST, TOKENS).
+% Scan next token.
+scanner(INPUT, [TOKEN|TOKENS]) :- scan(TOKEN, INPUT, REST),
+                                  !,
+                                  scanner(REST, TOKENS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nonletter/1 (+ character)
+% This predicate checks if the character is not a letter.
+
+nonletter(X) :- \+ letter(_, [X], []).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nondigit/1 (+ character)
+% This predicate checks if the character is not a digit.
+
+nondigit(X) :- \+ digit(_, [X], []).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Scanner (grammar).
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% scan/3 (- token)
+% This predicate is scanner grammar start S state.
+
+scan(X) --> sign(X);
+            numb(X);
+            var(X);
+            str(X);
+            stamp(X);
+            caller(X);
+% Scanner error.
+            {pln,
+            writeln(2, 'ERROR: Scanner problem'),
+            fail}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% sign/3 (- token)
+% This predicate scans special symbols.
+
+% Special infix symbols.
+sign(infix(X)) --> {member({Y, X},
+                   [{",  ", ''','''}, {":  ", ''':'''}, {"<  ", '''<'''},
+                   {"=<  ", '''=<'''}, {"=  ", '''='''}, {">  ", '''>'''},
+                   {">=  ", '''>='''}, {".  ", '''.'''}])},
+                   Y,
+                   \+ findeol.
+sign(infix('::-')) --> "::-".
+% Language symbols.
+sign(X) --> {member({X, Y},
+            [{constraint, "!-"}, {doublecolon, "::"}, {backplus, "\\+"},
+             {nonequal, "!="}, {screamer, "!"}, {doubledot, ".."}, {dot, "."},
+             {leftparen, "("}, {rightparen, ")"},  {query, "?-"}, {ass, ":=:"},
+             {leftbracket, "["}, {rightbracket, "]"}, {comma, ","}, {pipe, "|"},
+             {leftcurly, "{"}, {rightcurly, "}"}, {printquery, "??-"}])},
+            Y.
+% Literary symbols.
+sign(X), [BACK] --> {member({Y, [BACK]}, [{"(", "("},
+                      {delimiter(_), " "}]),
+                    (member(T, ["not", "and", "or"]),
+                    X = Z;
+                    member(T, ["is", "mod", "rem", "from", "as", "div", "xor"]),
+                    X = infix(Z))},
+                    T,
+                    Y,
+                    {atom_codes(Z, T)}.
+% Regular infix symbols.
+sign(infix(X)) --> {member(Y, ["^=..", "=\\=", "\\==", "@=<", "@>=", "-->",
+                   "=..", "=:=", ":-", "\\=", "==", "@=", "@<", "@>", "=<",
+                   "->", ">=", "?=", "/\\", "\\/", "><", "//", "<<", ">>", "**",
+                   ";", "=", "<", ">", ":", "+", "-", "*", "/", "\\", "^"])},
+                   Y,
+                   {atom_codes(X, Y)}.
+% One more language symbol.
+sign(module) --> "@".
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% numb/3 (- token)
+% This predicate scans non negative numbers.
+
+% Float number.
+numb(float(X)) --> fullnumb(Y),
+                   ".",
+                   fullnumb(Z),
+                   !,
+                   {append(Y, [0'.|Z], LIST),              %0' - ascii
+                   number_codes(X, LIST)}.
+% Integer number.
+numb(int(X)) --> fullnumb(Y),
+                 {number_codes(X, Y)}.
+% ASCII code number.
+numb(int(X)) --> "&",
+                 [X].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% fullnumb/3 (- digits list)
+% This predicate scans list of digits for numbers.
+
+% Just call non-empty list.
+fullnumb([L|LS]) --> restnumb([L|LS]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% restnumb/3 (- digits list)
+% This predicate scans the rest part of digits list for numbers.
+
+% Read one digit and call itself recursively.
+restnumb([L|LS]) --> digit(L),
+                     !,
+                     restnumb(LS).
+% No more digits, check there isn't a letter after.
+restnumb([]), [X] --> [X],
+                      !,
+                      {nonletter(X)}.
+% Number at input end.
+restnumb([]) --> [].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% digit/3 (- digit)
+% This predicate scans one digit.
+
+digit(X) --> [X],
+             {X >= 0'0,
+              X =< 0'9}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% var/3 (- variable structure (original name and created for code generator))
+% This predicate scans variable.
+
+% Named don't care variable.
+var(var(X, Y)) --> "?_",
+                   reststr([L|LS]),
+                   {atom_codes(X, [0'_, L|LS]),            % 0' - ascii
+                   atom_concat('_V', X, Y)}.
+% Named variable.
+var(var(X, Y)) --> "?",
+                   letter(L),
+                   {L \= 0'_},                             % 0' - ascii
+                   reststr(LS),
+                   {atom_codes(X, [L|LS]),
+                   atom_concat('_V', X, Y)}.
+% Disposable variable.
+var(var('_', Y)), [X] --> "?",
+                          ("_";
+                          []),
+                          [X],
+                          !,
+                          {nondigit(X),
+% Create original name.
+                          gensym('_V', Y);
+% If there is digit after, it's an error.
+                          !,
+                          pln,
+                          writeln(2, 'ERROR: Wrong variable name'),
+                          fail}.
+% Disposable variable at the input end.
+var(var('_', Y)) --> "?",
+                     ("_";
+                     []),
+% Create original name.
+                     {gensym('_V', Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% letter/3 (- letter)
+% This predicate scans a letter, including underscore.
+
+letter(X) --> [X],
+              {X = 0'_;                                    % 0' - ascii
+              X >= 0'a,
+              X =< 0'z;
+              X >= 0'A,
+              X =< 0'Z}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% reststr/1 (- characters list)
+% This predicate scans the rest of proper atom - letters and digits.
+
+reststr([L|LS]) --> (letter(L);
+                    digit(L)),
+                    !,
+                    reststr(LS).
+reststr([]) --> [].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% str/3 (- token)
+% This predicate scans a proper atom.
+
+% Starts with lowercase letter and will not need quotes in code generator.
+str(str(X)) --> [L],
+                {L >= 0'a,
+                L =< 0'z},
+                !,
+                reststr(LS),
+                {atom_codes(X, [L|LS])}.
+% Starts with uppercase letter or underscore and will need quotes.
+str(str(p(X))) --> letter(L),
+                   !,
+                   reststr(LS),
+                   {atom_codes(X, [L|LS])}.
+% Special terms, quoted in code.
+str(str(p(X))) --> "'",
+                   !,
+                   reststrstr(LS),
+                   {atom_codes(X, LS)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% reststrstr/3 (- characters list)
+% This predicate scans the rest list of special quoted atom.
+
+% Replace backslash quote with double quotes as should be in Prolog.
+reststrstr([0''', 0'''|LS]) --> [0'\\, 0'''],
+                                !,
+                                reststrstr(LS).
+% Closing quote.
+reststrstr([]) --> "'",
+                   !.
+% Collect next backslash.
+reststrstr([0'\\|LS]) --> [0'\\, 0'\\],                    % 0' - ascii
+                          !,
+                          reststrstr(LS).
+% Collect next ampersand.
+reststrstr([0'&|LS]) --> [0'\\, 0'&],                      % 0' - ascii
+                         !,
+                         reststrstr(LS).
+% Collect next ASCII character.
+reststrstr([L|LS]) --> "&",
+                       digit(X),
+                       digit(Y),
+                       digit(Z),
+                       {number_codes(L, [X, Y, Z]),
+                       L > 31,
+                       L < 127,
+                       !},
+                       reststrstr(LS).
+% Collect next character.
+reststrstr([L|LS]) --> [L],
+                       !,
+                       reststrstr(LS).
+% Closing quote not found in the input.
+reststrstr(_) --> {pln,
+                  writeln(2, 'ERROR: Unclosed string'),
+                  fail}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findeol/2
+% This predicates scans to check if there is end of line - white space or
+% comments left.
+
+findeol --> (" ";
+            "\t"),
+            findeol.
+
+findeol -->  "%";
+             "/*";
+             "\n";
+             "\r".
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% delimiter/2
+% This predicate scans all kinds of delimiters.
+
+% Regular delimiters.
+delimiter(_) --> "\n";
+                 "\t";
+                 "\r";
+                 "\f";
+                 " ".
+% One line comment.
+delimiter(_) --> "%",
+                 !,
+                 linecomment.
+% Fragment comment.
+delimiter(X) --> "/*",
+                 !,
+                 endcomment(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% linecomment/2
+% This predicate skips all the input in one line comment.
+
+linecomment, "\n" --> "\n",
+                      !.
+linecomment --> [_],
+                !,
+                linecomment.
+linecomment --> [].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% endcomment/2
+% This predicate skips fragment comment until closing characters.
+
+endcomment(_) --> "*/",
+                  !.
+endcomment(X) --> [_],
+                  !,
+                  endcomment(X).
+% The comments were not closed.
+endcomment(false) --> !,
+                      {pln,
+                      writeln(2, 'ERROR: Unclosed comment'),
+                      fail}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% stamp/3 (- token)
+% This predicate scans doublequoted and backquoted pieces.
+
+% Start doublequoted piece.
+stamp(stamp([chunk(X)])) --> [0'\"],
+                             quoting(Y),
+                             {append([0'\"|Y], [0'\"], Z),
+% Added backquotes on both sides.
+                             atom_codes(X, Z)}.
+% Start backquoted piece.
+stamp(stamp(X)) --> "`",
+                    stamplist(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% quoting/3 (- characters list)
+% This predicate collects doublequoted piece.
+
+% End of list found.
+quoting([]) --> [0'\"].                                    % 0' - ascii
+% Escaped character.
+quoting([0'\\, X|Y]) --> [0'\\, X],
+                         !,
+                         quoting(Y).
+% Collect next character.
+quoting([X|Y]) --> [X],
+                   !,
+                   quoting(Y).
+% Closing doublequote not found.
+quoting(_) --> {pln,
+               writeln(2, 'ERROR: Unclosed doublequote'),
+               fail}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% stamplist/3 (- tokens list)
+% This predicate collects backquoted piece tokens.
+
+% End of piece found.
+stamplist([]) --> "`".
+% Collect variable or non empty chunk of characters and call itself for more.
+stamplist([Y|Z]) --> (var(Y);
+                     stamplistlist(X),
+                     {X \= [],
+                     atom_codes(T, X),
+                     Y = chunk(T)}),
+                     !,
+                     stamplist(Z).
+% Closing backquote not found.
+stamplist(_) --> {pln,
+                 writeln(2, 'ERROR: Unclosed backquote'),
+                 fail}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% stamplistlist/3 (- characters list)
+% This predicate collects one non variable token of backquoted piece.
+
+% Escaped characters.
+stamplistlist([X|Y]) --> "\\",
+                         [X],
+                         !,
+                         stamplistlist(Y).
+% Stop on variable.
+stamplistlist([]), "?" --> "?".
+% Stop on closing backquote.
+stamplistlist([]), "`" --> "`".
+% Collect next character.
+stamplistlist([X|Y]) --> [X],
+                         stamplistlist(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% caller/3 (- token)
+% This predicate finds first line of Linux or Unix executable.
+
+caller(caller) --> "#! /usr/bin/env pathlp",
+                   (" ";
+                   ""),
+                   {getconfig(linenumber, 1)}.

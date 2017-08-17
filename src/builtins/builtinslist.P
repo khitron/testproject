@@ -1,0 +1,87 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the builtins list.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ * Any new builtin should be added to this list, with his arity.
+ * The arity can be number or "_" for don't care.
+ */
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Builtins list.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% builtin/1 (+ predicate/arity)
+% This predicate adds bultins for the parser.
+
+% system.P
+builtin(help/0).
+builtin(state/0).
+builtin(halt/0).
+builtin(halt/1).
+
+% configuration.P
+builtin(answers/1).
+builtin(warnings/1).
+builtin(stability/1).
+builtin(tracing/1).
+builtin(typing/2).
+builtin(typing/1).
+builtin(equality/2).
+builtin(equality/1).
+builtin(timeout/1).
+builtin(depth/2).
+builtin(sdepth/2).
+
+% database.P
+builtin(resetsystem/0).
+builtin(stable/1).
+builtin(stable/2).
+
+% dynmods.P
+builtin(module/1).
+builtin(newmodule/1).
+builtin(existsmodule/1).
+
+% testing.P
+builtin(testing/1).
+builtin(test/0).
+builtin(test/1).
+
+% flowing.P
+builtin(true/0).
+builtin(otherwise/0).
+builtin(undefined/0).
+builtin(false/0).
+builtin(fail/0).
+% And also if statement.
+
+% variables.P
+builtin(setglobal/2).
+builtin(readglobal/2).
+builtin(printglobals/0).
+builtin(unsetglobal/1).
+
+% otherbuiltins.P
+builtin(pwrite/_).
+builtin(pwriteln/_).
+builtin(load/1).
+builtin(load/2).
+builtin(loadnew/1).
+builtin(loadnew/2).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% aggr/1 (+ operator)
+% This predicate adds aggregation operators bultins for the parser.
+
+% aggregation.P
+aggr(bagof).
+aggr(setof).
+aggr(sum).
+aggr(average).
+aggr(max).
+aggr(min).

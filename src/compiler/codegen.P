@@ -1,0 +1,378 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the compiler code generator file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ * The input: Enriched parsing tree, as output of semantic.P semantic analyzer.
+ * The output: Prolog code.
+ */
+
+% Module namespace directives.
+
+:- export tr/3, abtr/0.
+:- import ac/2, gensym/2, getconfig/2, takestr/2 from module.
+:- import term_to_atom/2 from string.
+:- table tr/3.
+
+% XSB preprocessor definitions.
+
+:- compiler_options([spec_off, xpp_on]).
+
+#define PREFIX _^pathlp_247_
+#mode nostring "\!#'"
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Code generator.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part is compiler code generator.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% tr/3 (+ additional information, + branch, - code) (tabled)
+% This predicate is compiler code generator main predicate.
+% First argument on call is a pair of input and variables list,
+% inside it is predicates' accordant prefix.
+% A consequent is translated to a predicate as q_equal (derived) or fact_q_equal
+% (for facts). A query formula is translated to a predicate as is_q_equal, which
+% is a closure form of the derived one.
+
+% Rule.
+tr(_, rule(A, B), ANS) :- tr('''PREFIX ' / ' MODNAME''(', A, ANSA),
+                  tr('''PREFIX is_' / '''(MODNAME, ', B, ANSB),
+                  ac([ANSA, ' :- ', ANSB, '.'], ANS).
+% Fact.
+tr(_, fact(A), ANS) :- tr('''PREFIX fact_' / ' MODNAME''(', A, ANSA),
+                 ac([ANSA, '.'], ANS).
+% Silent query.
+tr((KIND, _, _), query(silent(A)), ANS) :-
+           !,
+           tr('''PREFIX is_' / '''(__MD, ', A, ANSA),
+           (KIND == file ->
+           MOD = 'MODNAME';
+           getconfig(module, MOD)),
+           ac(['?- once(((__MD = ', MOD, ', ', ANSA, '); true)).'], ANS).
+% Regular query.
+tr((KIND, _, VARS), query(print(A)), ANS) :-
+ tr('''PREFIX is_' / '''(__MD, ', A, ANSA),
+ acvars(VARS, ANSB),
+ (KIND == file ->
+ MOD = 'MODNAME';
+ getconfig(module, MOD)),
+ ac(['?- ''PREFIX runq''((__MD = ', MOD, ', ', ANSA, '), [', ANSB, ']).'], ANS).
+% Colon hyphen directive.
+tr(_, directive(A), ANS) :-
+     tr('''PREFIX is_' / '''(__MD, ', A, ANSA),
+     ac([':- ''PREFIX directive''((__MD = MODNAME, ', ANSA, ')).'], ANS).
+% Constraint.
+tr((_, INPUT, VARS), constraint(A, Name), ANS) :-
+                         tr('''PREFIX is_' / '''(MODNAME, ', A, ANSA),
+                         acvars(VARS, ANSB),
+                         quots(INPUT, ANSC),
+						 takestr(Name, Newname),
+                         ac(['''PREFIX q_constraint MODNAME''(', ANSA,
+                          ', [', ANSB, '], ''', ANSC, ''', ''', Newname, ''').'], ANS).
+% "And" statement.
+tr(M, andb(A, B), ANS) :- tr(M, A, ANSA),
+                  tr(M, B, ANSB),
+                  ac(['((', ANSA, '), (', ANSB, '))'], ANS).
+% "Or" statement.
+tr(M, orb(A, B), ANS) :- tr(M, A, ANSA),
+                 tr(M, B, ANSB),
+                 ac(['((', ANSA, '); (', ANSB, '))'], ANS).
+% "Not" statement.
+tr(M, notb(A), ANS) :- tr(M, A, ANSA),
+                 ac(['catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not((', ANSA, '))'], ANS).
+% Backslashed plus "not" statement.
+tr(M, notp(A), ANS) :- tr(M, A, ANSA),
+                 ac(['fail_if((', ANSA, '))'], ANS).
+% Term equal term.
+tr(M, compare(equal, B, C), ANS) :- !,
+                        tr(M, B, ANSB),
+                        tr(M, C, ANSC),
+                        ac(['((', ANSB, ') = (', ANSC, '))'], ANS).
+% Term non equal term.
+tr(M, compare(nonequal, B, C), ANS) :- 
+                        !,
+                        tr(M, B, ANSB),
+                        tr(M, C, ANSC),
+                        ac(['(fail_if((', ANSB, ') = (', ANSC, ')))'], ANS).
+
+% Term compare term.
+tr(M / N, compare(A, B, C), ANS) :-
+             tr(M / N, B, ANSB),
+             tr(M / N, C, ANSC),
+             ac([M, q_compare, N, A, ', (', ANSB, '), (', ANSC, '))'], ANS).
+
+tr(M / _, moduled(X, Y), ANS) :- Y = const(pred(Z)),
+                       ac(['''(', Z, ', '], N),
+                       tr(M / N, X, ANS).
+tr(M / _, moduled(X, Y), ANS) :- Y = var(_, Z),
+                       ac(['''(', Z, ', '], N),
+                       tr(M / N, X, ANS).
+
+% Logical equality.
+tr(M / N, assignment(A, B), ANS) :-
+                tr(M / N, A, ANSA),
+                tr(M / N, B, ANSB),
+                ac([M, q_equal, N, '(', ANSA, '), (', ANSB, '))'], ANS).
+% Membership relationship.
+tr(M / N, membership(A, B), ANS) :-
+             tr(M / N, A, ANSA),
+             tr(M / N, B, ANSB),
+             ac([M, q_membership, N, '(', ANSA, '), (', ANSB, '))'], ANS).
+% Untabled membership relationship.
+tr(M / N, untmembership(A, B), ANS) :-
+             tr(M / N, A, ANSA),
+             tr(M / N, B, ANSB),
+             ac([M, q_untmembership, N, '(', ANSA, '), (', ANSB, '))'], ANS).
+% Subclass relationship.
+tr(M / N, subclass(A, B), ANS) :-
+              tr(M / N, A, ANSA),
+              tr(M / N, B, ANSB),
+              ac([M, q_subclass, N, '(', ANSA, '), (', ANSB, '))'], ANS).
+% A cut.
+tr(_, cut, ' ! ').
+% Variable.
+tr(_, var(_, A), A).
+% Prolog received piece.
+tr(_, const(stamp([])), '').
+tr(_, const(stamp([X|Y])), ANS) :- tr(_, X, ANS1),
+                         tr(_, const(stamp(Y)), ANS2),
+                         ac([ANS1, ANS2], ANS).
+% Prolog received piece part.
+tr(_, chunk(X), X).
+% Parenthesed term.
+tr(M, paren(A), ANS) :- tr(M, A, ANSA),
+                ac(['(', ANSA, ')'], ANS).
+% Number.
+tr(_, const(number(asterisk)), '''*''') :- !.
+tr(_, const(number(A)), ANS) :- term_to_atom(A, ANS).
+% Atom - quoted and regular.
+tr(_, const(pred(p(A))), ANS) :-  !,
+                        ac(['''', A, ''''], ANS).
+tr(_, const(pred(A)), A).
+% Prolog call.
+tr(M, pair(A, const(pred(p('_prolog')))), ANS) :- !,
+                                  tr(M, A, ANS).
+tr(M, pair(A, const(pred(B))), ANS) :- !,
+                           tr(M, A, ANSA),
+                           tr(M, const(pred(B)), ANSB),
+                           ac([ANSB, ':', ANSA], ANS).
+tr(M, pair(A, B), ANS) :-
+             tr(M, A, ANSA),
+             tr(M, B, ANSB),
+             ac(['''PREFIX callpred''((', ANSB, '), (', ANSA, '))'], ANS).
+% Compound term.
+tr(M, const(compound(A, [])), ANS) :- !,
+                          tr(M, A, ANS).
+tr(M, const(compound(A, B)), ANS) :- tr(M, A, ANSA),
+                         trlist(M, B, ANSB),
+                         ac([ANSA, '(', ANSB, ')'], ANS).
+% Infix term expression.
+tr(M, const(infix(A, B, C)), ANS) :- tr(M, A, ANSA),
+                         tr(M, C, ANSC),
+                         ac([ANSA, ' ', B, ' ', ANSC], ANS).
+% List.
+tr(_, const(list([])), '[ ]') :- !.
+tr(M, const(list(A)), ANS) :- trlist(M, A, ANSA),
+                    ac(['[', ANSA, ']'], ANS).
+tr(M, const(list(A, B)), ANS) :- trlist(M, A, ANSA),
+                       tr(M, B, ANSB),
+                       ac(['[', ANSA, '|', ANSB, ']'], ANS).
+tr(M / N, creategterm(A, B), ANS) :-
+                B \= [],
+                tr(M / N, A, ANSA),
+                tr(M / N, B, ANSB),
+                ac([M, q_gterm, N, '(', ANSA, '), (', ANSB, '))'], ANS).
+tr(M / N, gterm(A, B), ANS) :- tr(M / N, A, ANSA),
+                   gensym('_V', RES),
+                    trguard(M / N, B, RES, ANSB),
+     ac([true, ANSB, ', ', M, q_gterm, N, '(', ANSA, '), (', RES, '))'], ANS).
+% Shortened path expression.
+tr(M / N, makeobj(A, B, C), ANS) :-
+     tr(M / N, A, ANSA),
+     tr(M / N, B, ANSB),
+     tr(M / N, C, ANSC),
+     ac([M, q_property, N, '(', ANSA, '), (', ANSB, '), (', ANSC, '))'], ANS).
+tr(M / N, makespecobj(A, B, C), ANS) :-
+     tr(M / N, A, ANSA),
+     tr(M / N, B, ANSB),
+     trlist(M / N, C, ANSC),
+     ac([M, q_specproperty, N, '(', ANSA, '), (', ANSB, '), [', ANSC, '])'], ANS).
+tr(M / N, makeuntobj(A, B, C), ANS) :-
+    tr(M / N, A, ANSA),
+    tr(M / N, B, ANSB),
+    tr(M / N, C, ANSC),
+    ac([M, q_untproperty, N, '(', ANSA, '), (', ANSB, '), ([', ANSC, ']))'], ANS).
+tr(M / N, maketype(A, B, C, D, E), ANS) :-
+                     tr(M / N, A, ANSA),
+                     tr(M / N, B, ANSB),
+                     tr(M / N, C, ANSC),
+                     tr(M / N, D, ANSD),
+                     tr(M / N, E, ANSE),
+                     ac([M, q_type, N, '(', ANSA, '), (', ANSB,'), (',
+                         ANSC, '), (', ANSD, '), (', ANSE, '))'], ANS).
+tr(M / N, makespectype(A, B, C, D, E), ANS) :-
+                     tr(M / N, A, ANSA),
+                     tr(M / N, B, ANSB),
+                     trlist(M / N, C, ANSC),
+                     tr(M / N, D, ANSD),
+                     tr(M / N, E, ANSE),
+                     ac([M, q_spectype, N, '(', ANSA, '), (', ANSB,'), ([',
+                         ANSC, ']), (', ANSD, '), (', ANSE, '))'], ANS).
+% Regular path expression.
+tr(M, obj(X, Y), ANS) :- gensym('_V', RES),
+                 trpath(M, obj(X, Y), RES, ANS),
+                 !.
+tr(M, card(X, Y, Z, U, V), ANS) :-
+                      gensym('_V', RES),
+                      trtype(M, card(X, Y, Z, U, V), RES, ANS, _, _),
+                      !.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% trlist/2 (+ branch list, - code)
+% This predicate generates a code for the list of inputs.
+
+trlist(M, [A], ANSA) :- tr(M, A, ANSA).
+trlist(M, [A|B], ANS) :- tr(M, A, ANSA),
+                trlist(M, B, ANSB),
+                ac([ANSA, ', ', ANSB], ANS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% trpath/4 (+ predicate prefix, + branch, + expression result, - code)
+% This predicate generates a code for object path expression.
+
+trpath(M, obj(X, [obj(node(A), [])]), RES, ANS) :-
+                     tr(M, A, ANS1),
+                     trpath(M, X, ANS1, ANS2),
+                     ac([RES, ' = ', ANS1, ', ', ANS2], ANS).
+trpath(M, obj(X, Y), RES, ANS) :- trpath(M, X, RES, ANS1),
+                        trguard(M, Y, RES, ANS2),
+                        ac([ANS1, ANS2], ANS).
+% Expression could be shortened.
+trpath(M / N, edge(obj(node(X), []), Y), RES, ANS) :-
+      !,
+      tr(M / N, X, ANS1),
+      tr(M / N, Y, ANS2),
+      ac([M, q_property, N, '(', ANS1, '), (', ANS2, '), (', RES, '))'], ANS).
+trpath(M / N, untedge(obj(node(X), []), Y), RES, ANS) :-
+      !,
+      tr(M / N, X, ANS1),
+      tr(M / N, Y, ANS2),
+      ac([M, q_untproperty, N, '(', ANS1, '), (', ANS2, '), (', RES, '))'], ANS).
+% Expression part.
+trpath(M / N, edge(X, Y), RES, ANS) :- gensym('_V', SOURCE),
+                           trpath(M / N, X, SOURCE, ANS1),
+                           tr(M / N, Y, ANS2),
+                           ac([ANS1, ', ', M, q_property, N, SOURCE,
+                              ', (', ANS2, '), ', RES, ')'], ANS).
+trpath(M / N, untedge(X, Y), RES, ANS) :-
+                        gensym('_V', SOURCE),
+                        trpath(M / N, X, SOURCE, ANS1),
+                        tr(M / N, Y, ANS2),
+                        ac([ANS1, ', ', M, q_untproperty, N, SOURCE,
+                             ', (', ANS2, '), ', RES, ')'], ANS).
+% Expression source.
+trpath(M, node(X), RES, ANS) :- tr(M, X, ANS1),
+                      ac(['(', ANS1, ') = ', RES], ANS).
+trpath(M / N, gterm(X, Y), RES, ANS) :-
+           tr(M / N, X, ANS1),
+           trguard(M / N, Y, RES, ANS2),
+           ac([true, ANS2, ', ', M, q_gterm, N, ANS1, ', ', RES, ')'], ANS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% trguard/4 (+ predicate prefix, + branch list, + expression result, - code)
+% This predicate generates a code for guard list.
+
+trguard(_, [], _, '').
+trguard(M, [L|Ist], RES, ANS) :- trguarditer(M, [L|Ist], RES, Inside),
+                                 ac([', (false', Inside, ')'], ANS).
+
+trguarditer(_, [], _, '').
+trguarditer(M, [X|Y], RES, ANS) :-
+       (X = makeobj(A, B, []),
+       tr(M, makeobj(A, B, var(_, RES)), ANS1);
+       X = makeuntobj(A, B, []),
+       tr(M, makeuntobj(A, B, var(_, RES)), ANS1);
+       X = maketype(A, B, [], [], []),
+       tr(M, maketype(A, B, var(_, RES), var('_', '_'), var('_', '_')), ANS1);
+       X = obj(_, []),
+       trpath(M, X, RES, ANS1);
+       X = type(_, []),
+       trtype(M, X, RES, ANS1, var('_', '_'), var('_', '_'))),
+% Recursive call.
+       trguarditer(M, Y, RES, ANS2),
+       ac(['; ', ANS1, ANS2], ANS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% trtype/4 (+ predicate prefix, + branch, + expression result, - code)
+% This predicate generates a code for type path expression.
+
+trtype(M, type(X, Y), RES, ANS, U, V) :- trtype(M, X, RES, ANS1, U, V),
+                             trguard(M, Y, RES, ANS2),
+                             ac([ANS1, ANS2], ANS).
+% Expression could be shortened.
+trtype(M / N, edge(type(node(X), []), Y), RES, ANS ,U, V) :-
+                       !,
+                       tr(M / N, X, ANS1),
+                       tr(M / N, Y, ANS2),
+                       tr(M / N, U, ANSU),
+                       tr(M / N, V, ANSV),
+                       ac([M, q_type, N, '(', ANS1, '), (', ANS2, 
+                       '), ', RES, ', ', ANSU, ', ', ANSV, ')'], ANS).
+% Expression part.
+trtype(M / N, edge(X, Y), RES, ANS, U, V) :-
+             gensym('_V', SOURCE),
+             trtype(M / N, X, SOURCE, ANS1, var('_', '_'), var('_', '_')),
+             tr(M / N, Y, ANS2),
+             tr(M / N, U, ANSU),
+             tr(M / N, V, ANSV),
+             ac([ANS1, ', ', M, q_type, N, SOURCE, ', (', ANS2,
+             '), ', RES, ', (', ANSU, '), (' ,ANSV , '))'], ANS).
+% Expression source.
+trtype(M, node(X), RES, ANS, _, _) :- tr(M, X, ANS1),
+                          ac(['(', ANS1, ') = ', RES], ANS).
+% Expression with cardinality constraint.
+trtype(M, card(X, Y, Z, U, V), RES, ANS, _, _) :-
+                             trtype(M, edge(X, Y), RES, ANS1, U, V),
+                             trguard(M, Z, RES, ANS2),
+                             ac([ANS1, ANS2], ANS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% acvars/2 (+ variables list, - code)
+% This predicate generates a code for variables list.
+
+acvars([], '').
+acvars([var(X, Y)|Z], ANS) :- ac(['var(''', X, ''', ', Y, ')'], ANS1),
+                    acvars(Z, ANS2),
+                    (ANS2 = '' ->
+                    ANS = ANS1;
+                    ac([ANS1, ', ', ANS2], ANS)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% quots/2 (+ input code list, - output code atom)
+% This predicate doubles quotes for proper printing.
+
+quots(X, Y) :- quotlist(X, Y1),
+           atom_codes(Y, Y1).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% quotlist/2 (+ input characters list, - output characters list).
+% This predicate doubles quotes recursively for proper printing.
+
+quotlist([], []).
+quotlist([0'''|Y], [0''', 0'''|Y1]) :- !,            % 0' - ascii
+                           quotlist(Y, Y1).
+quotlist([0'\|Y], [0'\, 0'\|Y1]) :- !,            % 0' - ascii
+                        quotlist(Y, Y1).
+quotlist([X|Y], [X|Y1]) :- quotlist(Y, Y1).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% abtr/0
+% This predicate abolishes tr/3 table for the export.
+abtr :- abolish_table_pred(tr(_, _, _)).

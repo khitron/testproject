@@ -1,0 +1,45 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'dstud').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint dstud'     /4,
+             '_^pathlp_247_ q_equal dstud'          /2,
+             '_^pathlp_247_ q_membership dstud'     /2,
+             '_^pathlp_247_ q_property dstud'       /3,
+             '_^pathlp_247_ q_subclass dstud'       /2,
+             '_^pathlp_247_ q_type dstud'           /5,
+             '_^pathlp_247_ fact_q_equal dstud'     /2,
+             '_^pathlp_247_ fact_q_membership dstud'/2,
+             '_^pathlp_247_ fact_q_property dstud'  /3,
+             '_^pathlp_247_ fact_q_subclass dstud'  /2,
+             '_^pathlp_247_ fact_q_type dstud'      /5.
+:- dynamic '_^pathlp_247_ q_constraint dstud'/4,
+           '_^pathlp_247_ q_equal dstud'     /2, '_^pathlp_247_ fact_q_equal dstud'     /2,
+           '_^pathlp_247_ q_membership dstud'/2, '_^pathlp_247_ fact_q_membership dstud'/2,
+           '_^pathlp_247_ q_property dstud'  /3, '_^pathlp_247_ fact_q_property dstud'  /3,
+           '_^pathlp_247_ q_subclass dstud'  /2, '_^pathlp_247_ fact_q_subclass dstud'  /2,
+           '_^pathlp_247_ q_type dstud'      /5, '_^pathlp_247_ fact_q_type dstud'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'dstud').
+
+% Compiled file.
+
+'_^pathlp_247_ q_type dstud'((_Vx), (_Vy), (_Vz), (0), ('*')) :- (((('_^pathlp_247_ is_q_property'(dstud, (_Vz), ('_var'), (false))), ((('_^pathlp_247_ is_q_type'(dstud, (_Vx), (_Vy), (_Vt), (0), ('*'))), ('_^pathlp_247_ is_q_subclass'(dstud, (_Vt), (_Vz))))))), ('_^pathlp_247_ checkat'(_Vy))).
+'_^pathlp_247_ q_membership dstud'((_Vx), (_Vy)) :- (('_^pathlp_247_ is_q_subclass'(dstud, (_Vz), (_Vy))), ('_^pathlp_247_ is_q_membership'(dstud, (_Vx), (_Vz)))).
+'_^pathlp_247_ q_membership dstud'((_Vx), (_Vy)) :- (('_^pathlp_247_ is_q_property'(dstud, (_Vx), ('_var'), (true))), (((bin(typing(_Vkind, 'dstud'))), (((((_Vkind) = (inference))), ((('_^pathlp_247_ is_q_type'(dstud, (_Vz), (_Vt), (_Vy), (0), ('*'))), ((('_^pathlp_247_ is_q_property'(dstud, (_Vz), ('_var'), (false))), ((('_^pathlp_247_ is_q_membership'(dstud, (_Vu), (_Vz))), ('_^pathlp_247_ is_q_property'(dstud, (_Vu), (_Vt), (_Vx)))))))))))))).
+'_^pathlp_247_ q_membership dstud'((_Vx), (_Vy)) :- (('_^pathlp_247_ is_q_property'(dstud, (_Vx), ('_var'), (false))), (((bin(typing(_Vkind, 'dstud'))), (((((_Vkind) = (inference))), ((('_^pathlp_247_ is_q_property'(dstud, (_Vu), (_Vt), (_Vx))), ((('_^pathlp_247_ is_q_membership'(dstud, (_Vu), (_Vz))), ((('_^pathlp_247_ is_q_property'(dstud, (_Vz), ('_var'), (false))), ('_^pathlp_247_ is_q_type'(dstud, (_Vz), (_Vt), (_Vy), (0), ('*')))))))))))))).
+'_^pathlp_247_ q_subclass dstud'((_Vx), (_Vy)) :- (('_^pathlp_247_ is_q_property'(dstud, (_Vx), ('_var'), (false))), ((('_^pathlp_247_ is_q_subclass'(dstud, (_Vx), (_Vz))), ('_^pathlp_247_ is_q_subclass'(dstud, (_Vz), (_Vy)))))).
+'_^pathlp_247_ q_subclass dstud'((_Vx), (_Vy)) :- (('_^pathlp_247_ is_q_property'(dstud, (_Vx), ('_var'), (true))), ((('_^pathlp_247_ is_q_subclass'(dstud, (_Vz), (_Vy))), ('_^pathlp_247_ is_q_subclass'(dstud, (_Vx), (_Vz)))))).
+'_^pathlp_247_ q_type dstud'((_Vx), (_Ve), (_Vy), (_Vl), (_Vh)) :- (((('_^pathlp_247_ is_q_subclass'(dstud, (_Vx), (_Vt))), ('_^pathlp_247_ is_q_type'(dstud, (_Vt), (_Ve), (_Vy), (_Vl), (_Vh))))), ('_^pathlp_247_ checkat'(_Ve))).
+'_^pathlp_247_ q_constraint dstud'((('_^pathlp_247_ is_q_type'(dstud, (_Vx), (_Vt), (_Vy), (_Vl), (_Vh))), ((('_^pathlp_247_ is_q_compare'(dstud, grate, (_Vl), (_Vh))); ('_^pathlp_247_ is_q_compare'(dstud, less, (_Vl), (0)))))), [var('h', _Vh), var('l', _Vl), var('y', _Vy), var('t', _Vt), var('x', _Vx)], 'Wrong_multiplicity
+!- ?x!?t[?y]{?l..?h}, 
+   (?l > ?h or ?l < 0);', 'Wrong_multiplicity').
+:- '_^pathlp_247_ abolish'(dstud).

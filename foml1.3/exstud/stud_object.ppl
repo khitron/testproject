@@ -1,0 +1,22 @@
+%%% Object Structure
+Moshe:UnGraduate;
+Rina:UnGraduate;
+
+Moshe.studies[infi1];
+Rina.teaches[infi1];
+Rina.studies[infi3];
+infi1.points[6];
+infi3.points[4];
+
+Moshe.studies[bigData];
+Rina.studies[bigData];
+
+Moshe.curPoints[30];
+Moshe.maxPoints[120];
+Rina.curPoints[0];
+Rina.maxPoints[30];
+
+bigData:Seminar;
+bigData.topic['big'];
+bigData.topic['Data'];
+bigData.points[1];

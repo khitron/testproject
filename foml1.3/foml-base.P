@@ -1,0 +1,130 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load(['foml-class'])))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load(['foml-property'])))).
+'_^pathlp_247_ q_membership MODNAME'((_Vc), ('MM_Class')) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_V4)), ('MM_Class')).
+'_^pathlp_247_ q_membership MODNAME'((_Vx), (_VM_Class)) :- (('_^pathlp_247_ is_q_membership'(MODNAME, (_VM_Class_Name), ('MM_Class'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vx), (_VM_Class_Name))), (_VM_Class =.. [_VM_Class_Name, _Vmod])))).
+'_^pathlp_247_ q_property MODNAME'(('Class'), (member(_Vmod)), ('MM_Class')) :- '_^pathlp_247_ is_q_membership'(_Vmod, (_V5), ('Class')).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (member(_Vmod)), ('Class')) :- '_^pathlp_247_ is_q_property'(_Vmod, (_V6), (prop(_V7, _V8, _V9)), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (member(_Vmod)), ('Class')) :- '_^pathlp_247_ is_q_subclass'(_Vmod, (_Vc), (_V10)).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (member(_Vmod)), ('Class')) :- '_^pathlp_247_ is_q_subclass'(_Vmod, (_V11), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'(('Property'), (member(_Vmod)), ('MM_Class')) :- '_^pathlp_247_ is_q_membership'(_Vmod, (_V12), ('Property')).
+'_^pathlp_247_ q_property MODNAME'((_Vp), (member(_Vmod)), ('Property')) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (classes(_V13, _V14, _V15)), (_V16)).
+'_^pathlp_247_ q_property MODNAME'(('Multiplicity'), (member(_Vmod)), ('MM_Class')) :- '_^pathlp_247_ is_q_membership'(_Vmod, (_V17), ('Multiplicity')).
+'_^pathlp_247_ q_property MODNAME'((mult(_Vprop, _Vl, _Vh)), (member(_Vmod)), ('Multiplicity')) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vprop), (classes(_V18, _Vl, _Vh)), (_V19)).
+'_^pathlp_247_ q_property MODNAME'(('Association'), (member(_Vmod)), ('MM_Class')) :- '_^pathlp_247_ is_q_membership'(_Vmod, (_V20), ('Association')).
+'_^pathlp_247_ q_property MODNAME'((_Va), (member(_Vmod)), ('Association')) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Va), (prop(_Vx, _Vy, _Vz)), (_Vt))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Va), (prop(_Vx, _Vy, _Vz)), (_Vt)))).
+'_^pathlp_247_ q_property MODNAME'(('Attribute'), (member(_Vmod)), ('MM_Class')) :- '_^pathlp_247_ is_q_membership'(_Vmod, (_V21), ('Attribute')).
+'_^pathlp_247_ q_property MODNAME'((attr(_Vc, _Vattr, _Vtype)), (member(_Vmod)), ('Attribute')) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vc), (attr(_Vattr, _V22, _V23)), (_Vtype)).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_membership'(MODNAME, (_Vc), ('MM_Class'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (['Class', 'Property', 'Attribute', 'Multiplicity', 'Association', 'Link', 'Object']), ('_member'), (_Vc)))))), [var('c', _Vc)], 'c1_No_other_meta_classes
+!- ?c:MM_Class,
+   not [Class, Property, Attribute, Multiplicity, Association, Link, Object]._member[?c];', 'c1_No_other_meta_classes').
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Unknown_meta_classes'(_Vc))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), ('MM_Class'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(_Vmod, (['Class', 'Property', 'Attribute', 'Multiplicity', 'Association', 'Link', 'Object']), ('_member'), (_Vc)))))).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_property'(MODNAME, (_VClass), (member(_Vmod)), ('Class'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))), [var('mod', _Vmod), var('Class', _VClass)], 'c2_No_nonground_class
+!- ?Class.member(?mod)[Class],
+   ?mod._ground[false];', 'c2_No_nonground_class').
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Nonground_class'(_Vc))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), ('Class'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_property'(MODNAME, (_VProperty), (member(_Vmod)), ('Property'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))), [var('mod', _Vmod), var('Property', _VProperty)], 'c3_No_nonground_property
+!- ?Property.member(?mod)[Property],
+   ?mod._ground[false];', 'c3_No_nonground_property').
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Nonground_property'(_Vp))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vp), (member(_Vmod)), ('Property'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), (_Va))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), (_Vb))), ((((fail_if((_Va) = (_Vb)))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Va), (member(_Vmod)), ('MM_Class'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vb), (member(_Vmod)), ('MM_Class')))))))))), [var('b', _Vb), var('a', _Va), var('mod', _Vmod), var('c', _Vc)], 'c6_M_Classes_are_disjoint_sets
+!- ?c.member(?mod)[?a],
+   ?c.member(?mod)[?b],
+   ?a != ?b,
+   ?a.member(?mod)[MM_Class],
+   ?b.member(?mod)[MM_Class];', 'c6_M_Classes_are_disjoint_sets').
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Property_closing_1'(c = _Vc, p = _Vp))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vc), (property), (_Vp))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), ('Class')))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Property_closing_2'(c = _Vc, p = _Vp))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vc), (property), (_Vp))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vp), (member(_Vmod)), ('Property')))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Source_closing_1'(c = _Vc, p = _Vp))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (source), (_Vc))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), ('Class')))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Source_closing_2'(c = _Vc, p = _Vp))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (source), (_Vc))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vp), (member(_Vmod)), ('Property')))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Target_closing_1'(c = _Vc, p = _Vp))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (target), (_Vc))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), ('Class')))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Target_closing_2'(c = _Vc, p = _Vp))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (target), (_Vc))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vp), (member(_Vmod)), ('Property')))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Hierarchy_circulary'(c = _Vc, c1 = _Vc1))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (member(_Vmod)), ('Class'))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc1), (member(_Vmod)), ('Class'))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (sub(_Vmod)), (_Vc1))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vc1), (sub(_Vmod)), (_Vc)))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Same_inversed_property'(p = _Vp, p1 = _Vp1))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (inverse), (_Vp1))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vp1), (inverse), (_Vp2))), ((fail_if((_Vp) = (_Vp2))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (member(_Vmod)), (_Vy)) :- '_^pathlp_247_ is_q_membership'(_Vmod, (_Vc), (_Vy)).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (sub(_Vmod)), (_Vy)) :- '_^pathlp_247_ is_q_subclass'(_Vmod, (_Vc), (_Vy)).
+'_^pathlp_247_ q_property MODNAME'((_Vp), (source(_Vmod)), (_Vc)) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (classes(_Vc, _V24, _V25)), (_V26)).
+'_^pathlp_247_ q_property MODNAME'((_Vp), (target(_Vmod)), (_Vc)) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (classes(_V27, _V28, _V29)), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'((_Vp), (min(_Vmod)), (_Vl)) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (classes(_V30, _Vl, _V31)), (_V32)).
+'_^pathlp_247_ q_property MODNAME'((_Vp), (max(_Vmod)), (_Vh)) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (classes(_V33, _V34, _Vh)), (_V35)).
+'_^pathlp_247_ q_property MODNAME'((_Vp), (classes(_Vsource, _Vmod)), (_Vtarget)) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (classes(_Vsource, _V36, _V37)), (_Vtarget)).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (property(_Vp, _Vmod)), (_Vc1)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Vp), (classes(_Vc, _Vmod)), (_Vc1)).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (property(_Vmod)), (_Vp)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Vp), (classes(_Vc, _Vmod)), (_V38)).
+'_^pathlp_247_ q_property MODNAME'((_Va), (prop(_Vp, _Vmod)), (_Vc)) :- '_^pathlp_247_ is_q_property'(_Vmod, (_Va), (prop(_Vp, _V39, _V40)), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (dirsub(_Vmod)), (_Vc1)) :- (('_^pathlp_247_ is_q_subclass'(_Vmod, (_Vc), (_Vc1))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(((('_^pathlp_247_ is_q_subclass'(_Vmod, (_Vc), (_Vintermediate))), ('_^pathlp_247_ is_q_subclass'(_Vmod, (_Vintermediate), (_Vc1)))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (dirmmb(_Vmod)), (_Vc1)) :- (('_^pathlp_247_ is_q_membership'(_Vmod, (_Vc), (_Vc1))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vc1), ('Class'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vc), (_Vintermediate))), ('_^pathlp_247_ is_q_subclass'(_Vmod, (_Vintermediate), (_Vc1)))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vc1), (path([_Vp], _Vmod)), (_Vc2)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Vc1), (property(_Vp, _Vmod)), (_Vc2)).
+'_^pathlp_247_ q_property MODNAME'((_Vc1), (path([_Vp|_Vrest], _Vmod)), (_Vc2)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (path(_Vrest, _Vmod)), (_Vc2))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vc1), (property(_Vp, _Vmod)), (_Vc))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(MODNAME, (_Vrest), ('_member'), (_Vp))))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vc), ('Class'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(((('_^pathlp_247_ is_q_property'(MODNAME, ([_Vp|_Vrest]), ('_member'), (_Ve1))), ((('_^pathlp_247_ is_q_property'(MODNAME, ([_Vp|_Vrest]), ('_member'), (_Ve2))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Ve1), (inverse), (_Ve2)))))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vc), (cycle(_Vmod)), (_Vcycle)) :- '_^pathlp_247_ is_q_property'(MODNAME, (_Vc), (path(_Vcycle, _Vmod)), (_Vc)).
+'_^pathlp_247_ q_property MODNAME'(('Object'), (member(_Vmod)), ('MM_Class')) :- '_^pathlp_247_ is_q_membership'(_Vmod, (_V41), ('Object')).
+'_^pathlp_247_ q_property MODNAME'((_Vo), (member(_Vmod)), ('Object')) :- (('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), (_Vc))), ('_^pathlp_247_ is_q_membership'(_Vmod, (_Vc), ('Class')))).
+'_^pathlp_247_ q_property MODNAME'(('Link'), (member(_Vmod)), ('MM_Class')) :- '_^pathlp_247_ is_q_membership'(MODNAME, (_V42), ('Link'(_Vmod))).
+'_^pathlp_247_ q_property MODNAME'((_Vlink), (member(_Vmod)), ('Link')) :- (('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), ('Object'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo1), ('Object'))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (link(_Vlink)), (_Vo1)))))).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_property'(MODNAME, (_VObject), (member(_Vmod)), ('Object'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))), [var('mod', _Vmod), var('Object', _VObject)], 'c4_No_nonground_object
+!- ?Object.member(?mod)[Object],
+   ?mod._ground[false];', 'c4_No_nonground_object').
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Nonground_object'(_Vo))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vo), (member(_Vmod)), ('Object'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_property'(MODNAME, (_VLink), (member(_Vmod)), ('Link'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))), [var('mod', _Vmod), var('Link', _VLink)], 'c5_No_nonground_link
+!- ?Link.member(?mod)[Link],
+   ?mod._ground[false];', 'c5_No_nonground_link').
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Nonground_link'(_Vlink))) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vlink), (member(_Vmod)), ('Link'))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vmod), ('_ground'), (false)))).
+'_^pathlp_247_ q_property MODNAME'((_Vo), (member(_Vmod)), (_Vc)) :- (('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo1), ('Object'))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (_Vp), (_Vo1))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vp), ('Property'))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vp), (source), (_Vc)))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Unexisting_Link'(_Vo, _Vo1, _Vl))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (link(_Vl)), (_Vo1))), ((((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), ('Object'))); ('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo1), ('Object'))))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_membership'(_Vmod, (_Vl), ('Property'))))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not((((_Vl) = (inverse))))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not((((_Vl) = (allclasses))))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not((((_Vl) = (datatypes))))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not((((_Vl) = (attr(_V43)))))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not((((_Vl) = (dirmmb)))))))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Wrong_association_ends_number'(_Vassoc, _Vlist, _Vlength))) :- (('_^pathlp_247_ is_q_membership'(_Vmod, (_Vassoc), ('Association'))), (((bin(setof(_A47, [ ], '_^pathlp_247_ is_q_property'(_Vmod, (_Vassoc), (prop(_A47)), (_V44)), _Vlist))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vlist), ('_length'), (_Vlength))), ((fail_if((_Vlength) = (2))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Wrong_attr_type'(_Vclass, _VType))) :- (('_^pathlp_247_ is_q_membership'(_Vmod, (_Vclass), ('Class'))), ((('_^pathlp_247_ is_q_type'(_Vmod, (_Vclass), (attr(_V48)), (_VType), (0), ('*'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_membership'(MODNAME, (_VType), ('PrimTypes'(_Vmod))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vmod), (constraint), ('Wrong_attr_class'(_Vclass))) :- (('_^pathlp_247_ is_q_type'(_Vmod, (_Vclass), (attr(_V49)), (_V50), (0), ('*'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_membership'(_Vmod, (_Vclass), ('Class')))))).
+'_^pathlp_247_ q_membership MODNAME'((_VType), ('PrimTypes'(_Vmod))) :- (('_^pathlp_247_ is_q_property'(_Vmod, (_V51), (datatypes), (_Vlist))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vlist), ('_member'), (_VType)))).
+:- '_^pathlp_247_ abolish'(MODNAME).

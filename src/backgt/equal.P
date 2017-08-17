@@ -1,0 +1,61 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the logic equality management file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Builtins main.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_equal/3 (? dummy module name, ? left, ? right) (tabled)
+% This predicate unifies two terms in logical equation.
+
+% Variables.
+'PREFIX is_q_equal'(_, X, Y) :- var(X),
+                                var(Y),
+                                !,
+                                X = Y.
+% Reflexivity.
+% ?x :=: ?x; % BT 1
+'PREFIX is_q_equal'(_, X, X).
+% Location in memory.
+'PREFIX is_q_equal'(MOD, X, Y) :- usermod:'PREFIX q_equal'(MOD, X, Y).
+% Normal equality.
+'PREFIX is_q_equal'(MOD, X, Y) :- getconfig(MOD, equality, normal),
+                                  norm_q_equal(MOD, X, Y),
+                                  X \= Y,
+% Occurs check.
+                                  checkdeep(X, Y),
+                                  checkdeep(Y, X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% norm_q_equal/3 (+ module name, ? left, ? right) (tabled)
+% This predicate supports logical equality.
+
+% Symmetry.
+% ?x :=: ?y :- ?y :=: ?x; % BT 2
+norm_q_equal(MOD, X, Y) :- 'PREFIX is_q_equal'(MOD, Y, X).
+% Transitivity.
+% ?x :=: ?y :- ?x :=: ?z, ?y :=: ?z; % BT 3
+norm_q_equal(MOD, X, Y) :- 'PREFIX is_q_equal'(MOD, X, Z),
+                           'PREFIX is_q_equal'(MOD, Y, Z).
+% Compound terms recursive unification.
+norm_q_equal(MOD, A, B) :- compound(A),
+                           A =.. AA,
+                           list_q_equal(MOD, AA, BB),
+                           B =.. BB.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% list_q_equal/3 (+ module name, ? left, ? right)
+% This predicate executes logical equality for lists.
+
+list_q_equal(_, [], []).
+list_q_equal(MOD, [A|B], [AA|BB]) :- 'PREFIX is_q_equal'(MOD, A, AA),
+                                     list_q_equal(MOD, B, BB).

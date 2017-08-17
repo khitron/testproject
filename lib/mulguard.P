@@ -1,0 +1,11 @@
+:- multifile term_expansion/2.
+:- dynamic term_expansion/2.
+
+term_expansion('_^pathlp_247_ fact_q_specproperty MODNAME'(A, B, [C|D]),
+               ('_^pathlp_247_ q_property MODNAME'(A, B, Q) :- basics:member(Q, [C|D]))).
+term_expansion(('_^pathlp_247_ q_specproperty MODNAME'(A, B, [C|D]) :- Body),
+               ('_^pathlp_247_ q_property MODNAME'(A, B, Q) :- basics:member(Q, [C|D]), Body)).
+term_expansion('_^pathlp_247_ fact_q_spectype MODNAME'(A, B, [C|D], E, F), 
+               ('_^pathlp_247_ q_type MODNAME'(A, B, Q, E, F) :- basics:member(Q, [C|D]))).
+term_expansion(('_^pathlp_247_ q_spectype MODNAME'(A, B, [C|D], E, F) :- Body),
+               ('_^pathlp_247_ q_type MODNAME'(A, B, Q, E, F) :- basics:member(Q, [C|D]), Body)).

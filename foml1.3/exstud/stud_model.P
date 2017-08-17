@@ -1,0 +1,66 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+'_^pathlp_247_ fact_q_subclass MODNAME'(('UnGraduate'), ('Student')).
+'_^pathlp_247_ fact_q_subclass MODNAME'(('Graduate'), ('Student')).
+'_^pathlp_247_ fact_q_subclass MODNAME'(('PhdGraduate'), ('Graduate')).
+'_^pathlp_247_ fact_q_subclass MODNAME'(('MaGraduate'), ('Graduate')).
+'_^pathlp_247_ fact_q_subclass MODNAME'(('Seminar'), ('Course')).
+'_^pathlp_247_ fact_q_type MODNAME'(('Student'), (studies), ('Course'), (1), ('*')).
+'_^pathlp_247_ fact_q_type MODNAME'(('Course'), (participates), ('Student'), (1), ('*')).
+'_^pathlp_247_ fact_q_property MODNAME'((anonassoc), (props), (participates ^ studies)).
+'_^pathlp_247_ fact_q_type MODNAME'(('Graduate'), (teaches), ('Course'), (0), ('*')).
+'_^pathlp_247_ fact_q_type MODNAME'(('Course'), (taughtBy), ('Graduate'), (0), ('*')).
+'_^pathlp_247_ fact_q_property MODNAME'((teaching), (props), (teaches ^ taughtBy)).
+'_^pathlp_247_ fact_q_type MODNAME'(('Course'), (points), ('Int'), (1), (1)).
+'_^pathlp_247_ fact_q_type MODNAME'(('Student'), (curPoints), ('Int'), (1), (1)).
+'_^pathlp_247_ fact_q_type MODNAME'(('Student'), (maxPoints), ('Int'), (1), (1)).
+'_^pathlp_247_ fact_q_type MODNAME'(('Seminar'), (topic), ('String'), (1), (10)).
+'_^pathlp_247_ fact_q_type MODNAME'(('Graduate'), (teachesAndStudies), ('Course'), (0), (1)).
+'_^pathlp_247_ q_property MODNAME'((_Vstud), (teachesAndStudies), (_Vcourse)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vstud), (teaches), (_Vcourse))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vstud), (studies), (_Vcourse)))).
+'_^pathlp_247_ fact_q_type MODNAME'(('PhdGraduate'), (withoutPoints), ('Course'), (0), ('*')).
+'_^pathlp_247_ q_property MODNAME'((_Vstud), (withoutPoints), (_Vcourse)) :- (('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('PhdGraduate'))), (((_V51 = _Vteacher, _V52 = _Vcourse, '_^pathlp_247_ is_q_property'(MODNAME, (_Vstud), (studies), (_Vcourse)), '_^pathlp_247_ is_q_property'(MODNAME, _V52, (taughtBy), _Vteacher)), ('_^pathlp_247_ is_q_membership'(MODNAME, (_Vteacher), ('Graduate')))))).
+'_^pathlp_247_ fact_q_property MODNAME'(('Student'), (pointsForCourse('Course')), ('Int')).
+'_^pathlp_247_ q_property MODNAME'((_Vstud), (pointsForCourse(_Vcourse)), (_Vpoints)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vstud), (studies), (_Vcourse))), (bin(if('_^pathlp_247_ is_q_property'(MODNAME, (_Vstud), (withoutPoints), (_Vcourse)), ((_Vpoints) = (0)), '_^pathlp_247_ is_q_property'(MODNAME, (_Vcourse), (points), (_Vpoints)))))).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('UnGraduate'))), ('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('Graduate')))), [var('stud', _Vstud)], '!- ?stud:UnGraduate, ?stud:Graduate;', 'unnamed').
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('PhdGraduate'))), ('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('MaGraduate')))), [var('stud', _Vstud)], '!- ?stud:PhdGraduate, ?stud:MaGraduate;', 'unnamed').
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('Student'))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('UnGraduate'))))), (((catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('PhdGraduate'))))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('MaGraduate')))))))))), [var('stud', _Vstud)], '!- ?stud:Student, not ?stud:UnGraduate, not ?stud:PhdGraduate, not ?stud:MaGraduate;', 'unnamed').
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_property'(MODNAME, (_Vcourse), (taughtBy), (_Vstud))), ((('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('MaGraduate'))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vcourse), (participatedBy), (_Vstud))), ('_^pathlp_247_ is_q_membership'(MODNAME, (_Vstud), ('PhdGraduate')))))))), [var('stud', _Vstud), var('course', _Vcourse)], '!- ?course.taughtBy[?stud], ?stud:MaGraduate,
+   ?course.participatedBy[?stud], ?stud:PhdGraduate;', 'unnamed').
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_membership'(MODNAME, (_Vcourse), ('Seminar'))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vcourse), (points), (_Vp))), ('_^pathlp_247_ is_q_compare'(MODNAME, grate, (_Vp), (2)))))), [var('p', _Vp), var('course', _Vcourse)], '!- ?course:Seminar, ?course.points[?p], ?p > 2;', 'unnamed').
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_property'(MODNAME, (_Vcourse), (points), (_Vp))), ((('_^pathlp_247_ is_q_compare'(MODNAME, less, (_Vp), (0))); ('_^pathlp_247_ is_q_compare'(MODNAME, grate, (_Vp), (10)))))), [var('p', _Vp), var('course', _Vcourse)], '!- ?course.points[?p], (?p < 0 or ?p > 10);', 'unnamed').
+:- '_^pathlp_247_ abolish'(MODNAME).

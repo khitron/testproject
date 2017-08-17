@@ -1,0 +1,66 @@
+/* This file is PathLP highlighting Kate test.
+ * It was written by Igal Khitron.
+ */
+% These are language constructors.
+. ! : :: :=:
+% These are inner predicates.
+help halt resetsystem answers if and or not stability(initiated) stability(intiated)
+% These are special symbols.
+?- !- :- , ??- () [] {} . ;
+% These are predicates.
+gjj ygjhg '89587\'  5vhgjh dfj$&126^$%$$\'&476'   'kjg'
+/* Error predicate: */ 'yuiytui
+% These are numbers
+54633 -585.6787 *
+% These are variables.
+?ggyuit ?y89797hjghj
+% These are don't care variables.
+? ?_ ?_hhnjklh
+/* Error variable: */ ?8ghhgkgkjg
+% These are language symbols
+< > = | =< != @
+% This is Linux magic number caller.
+#! /usr/bin/env pathlp
+/* Error caller: */
+#! /usr/bin/evn pathlp
+% These are preprocessor commands
+#define a 3
+#eval 3 + 4
+#define same(X) \
+X..X
+/* Error preprocessor */
+#define 
+% These are Prolog predicates which can be used.
+is mod rem true false undefined fail as
+% These are infix symbols.
+<   >   =<   ,   .  
+% Backquote mechanism.
+`yoiuuyoi`
+`asfaas?df \\\?a465\`46 \\?_hkk ? ?_ \?5 nn,n,jkhk`
+/* Error backquote: */ `gdfgf?5 dgfdgf` `uytyutuiti
+% These are prolog calls.
+repeat@_prolog datime(?x)@standard append(([1, 2, 3|?x], [4, 5, 6], ?_y)@basics
+
+
+% Lines continuation.
+??- ?x is 3 +\
+47.
+??- ?x is 5\2\
++
+3.
+% Integer at end of line continuation.
+??- ?x is 5\2 \
++
+3.
+% ASCII code.
+& &a &$ &~ &3 &%
+% ASCII list
+"kughgju" "jgj\"lhjjkh"
+/* Error ASCII list */ "jkhkhk
+% Unparsable text.
+                                                                                                                                                         $ ~ # דולי ,הלו &
+% Some code, @def is dynamic module name.
+a.b[c];
+?x.e[?age] :- q!p[?m]{12..14}@def, ?m is ?age + 11;
+?- ?x.?[?_z], ?_z < 15, ?p = [1.23, 1. 23];
+!- q.?[?n], ?n = ? <   ?;

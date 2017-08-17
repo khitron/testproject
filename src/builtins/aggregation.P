@@ -1,0 +1,142 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the aggregation builtins definition file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% bagof/3+ (+ aggregation variable, + grouping variables (zero or more),
+% + goal (one or more elementary formulas), - bag list)
+% This predicate finds the bag of evaluation.
+
+bin(bagof(VAR, GR, QUERY, RES)) :- !,
+                                   findaggr(VAR, GR, QUERY, RES).
+
+% setof/3+ (+ aggregation variable, + grouping variables (zero or more),
+% + goal (one or more elementary formulas, - set list)
+% This predicate finds the bag of evaluation and sort it to remove duplicates.
+
+bin(setof(VAR, GR, QUERY, RES)) :- !,
+                                   findaggr(VAR, GR, QUERY, ANS),
+                                   sort(ANS, RES).
+
+% sum/3+ (+ aggregation variable, + grouping variables (zero or more),
+% + goal (one or more elementary formulas, - sum)
+% This predicate finds the bag of evaluation and sums the list.
+
+bin(sum(VAR, GR, QUERY, RES)) :- !,
+                                 findaggr(VAR, GR, QUERY, ANS),
+                                 numlist(ANS, FLAG, _),
+                                 (FLAG == 'true' ->
+                                 RES = '*';
+                                 findsum(ANS, RES)).
+
+% average/3+ (+ aggregation variable, + grouping variables (zero or more),
+% + goal (one or more elementary formulas, - average)
+% This predicate finds the bag of evaluation and calculates the average
+% of the list.
+
+bin(average(VAR, GR, QUERY, RES)) :- !,
+                                     findaggr(VAR, GR, QUERY, ANS),
+                                        numlist(ANS, FLAG, _),
+                                     (FLAG == 'true' ->
+                                     RES = '*';
+                                     findsum(ANS, SUM),
+                                     length(ANS, LENGTH),
+                                     LENGTH > 0,
+                                     RES is SUM / LENGTH).
+
+% max/3+ (+ aggregation variable, + grouping variables (zero or more),
+% + goal (one or more elementary formulas, - max)
+% This predicate finds the bag of evaluation and calculates the maximum
+% of the list.
+
+bin(max(VAR, GR, QUERY, RES)) :- !,
+                                 findaggr(VAR, GR, QUERY, [A|NS]),
+                                 numlist([A|NS], FLAG, _),
+                                 (FLAG == 'true' ->
+                                 RES = '*';
+                                 findmax(A, NS, RES)).
+
+% min/3+ (+ aggregation variable, + grouping variables (zero or more),
+% + goal (one or more elementary formulas, - min)
+% This predicate finds the bag of evaluation and calculates the minimum
+% of the list.
+
+bin(min(VAR, GR, QUERY, RES)) :- !,
+                                 findaggr(VAR, GR, QUERY, ANS),
+                                 numlist(ANS, FLAG, REMOVED),
+                                 (REMOVED = [RE|MOVED] ->
+                                 findmin(RE, MOVED, RES);
+                                 (FLAG == true ->
+                                 RES = '*')).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findaggr/4 (+ aggregation variable, + grouping variables list, + goal,
+% - result)
+% This predicate finds the bag of evaluation for all builtins.
+
+findaggr(VAR, GR, QUERY, ANS) :- findall(GR, QUERY, GRS),
+                                 (GRS = [] ->
+                                 ANS = [];
+                                 sort(GRS, SORTED),
+                                 one_by_one(GR, SORTED),
+                                 findall(VAR, QUERY, ANS)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% numlist/3 (+ list, - infinity, - removed list)
+% This predicate succeeds iff the list includes only numbers and infinity
+% asterisk symbols, and returns the list without asterisks.
+
+numlist([], _, []).
+numlist([X|Y], true, Z) :- X == '*',
+                           numlist(Y, _, Z).
+numlist([X|Y], FLAG, [X|Z]) :- number(X),
+                               numlist(Y, FLAG, Z).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findsum/2 (+ list, - sum)
+% This predicate calculates the list sum.
+
+findsum([], 0).
+findsum([X|Y], SUM) :- findsum(Y, SUMY),
+                       SUM is X + SUMY.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findmax/2 (+ list, - max)
+% This predicate calculates the list maximum.
+
+findmax(A, [], A).
+findmax(A, [N|S], RES) :- (N > A ->
+                          NEWA = N;
+                          NEWA = A),
+                          findmax(NEWA, S, RES).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findmin/2 (+ list, - min)
+% This predicate calculates the list minimum.
+
+findmin(A, [], A).
+findmin(A, [N|S], RES) :- number(N), 
+                          (N < A ->
+                          NEWA = N;
+                          NEWA = A),
+                          findmin(NEWA, S, RES).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% onebyone/2 (@ template, + answers list)
+% This predicate returns answers from the list, one by one.
+% The code was supported by Michael Kifer.
+
+one_by_one(_Cond, []) :- !,
+                         fail.
+one_by_one(Cond, [Cond|_]).
+one_by_one(Cond, [_|Rest]) :- one_by_one(Cond, Rest).

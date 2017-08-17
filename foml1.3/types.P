@@ -1,0 +1,48 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+'_^pathlp_247_ q_property MODNAME'((_Vx), (int), (_V2)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vx), ('_var'), (true))), ((( ! ), (bin(fail))))).
+'_^pathlp_247_ q_property MODNAME'(('*'), (int), (_Vx)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vx), ('_var'), (true))), ((( ! ), (((_Vx) = (true)))))).
+'_^pathlp_247_ q_property MODNAME'(('*'), (int), (true)) :- bin(true).
+'_^pathlp_247_ q_property MODNAME'(('*'), (int), (false)) :- bin(true).
+'_^pathlp_247_ q_property MODNAME'((_Vx), (int), (true)) :- integer(_Vx).
+'_^pathlp_247_ q_property MODNAME'((_Vx), (int), (false)) :- fail_if(('_^pathlp_247_ is_q_property'(MODNAME, (_Vx), (int), (true)))).
+'_^pathlp_247_ fact_q_membership MODNAME'((true), ('Boolean')).
+'_^pathlp_247_ fact_q_membership MODNAME'((false), ('Boolean')).
+'_^pathlp_247_ q_constraint MODNAME'((('_^pathlp_247_ is_q_membership'(MODNAME, (_Vx), ('Boolean'))), (fail_if((((((_Vx) = (true))); (((_Vx) = (false)))))))), [var('x', _Vx)], 'boolean
+!- ?x:Boolean,
+   \\+ (?x = true
+   or
+   ?x = false);', 'boolean').
+:- '_^pathlp_247_ abolish'(MODNAME).

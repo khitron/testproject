@@ -1,0 +1,56 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the background theories file for path.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Builtins main.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%% Compose
+
+?a.compose(?w1, ?w2, ?mid)[?b] :- sum(?w1, ?w2)._ground[true], % ? nonvar
+                                  ?a.?w1[?mid],
+                                  ?mid.?w2[?b];
+
+?a.compose(?w1, ?w2)[?b] :- sum(?w1, ?w2)._ground[true], % ? nonvar
+                            ?a.?w1[?mid],
+                            ?mid.?w2[?b];
+
+%%% Closure
+
+?a.closure[?c] :- ?a.?[?c];
+?a.closure[?c] :- ?a.?[?d],
+                  ?d.closure[?c];
+
+%%% Simple closure only, with no circles.
+% Collects nodes
+?a.closure([])[?c] :- ?a.?[?c];
+?a.closure(?path)[?c] :- ?path._var[false],
+                         ?path = [?d|?rest],
+                         ?a.?[?d],
+                         ?d.closure(?rest)[?c],
+                         not ?rest._member[?d],
+                         not ?rest._member[?a];
+
+% Collects edges
+?a.closure_edges(?path)[?c] :- ?path._var[false],
+                         ?path = [?b],
+                         ?a.?b[?c];
+?a.closure_edgse(?path)[?c] :- ?path._var[false],
+                         ?path = [?b|?rest],
+                         ?a.?b[?d],
+                                    ?d.closure_edges(?rest)[?c],
+                                    not ?rest._member[?d],
+                                    not ?rest._member[?a];
+
+%%% Circle
+?a.circle[true] :- ?a.closure[?a];
+
+?a.circle(?circle)[?a] :- ?a.closure(?circle)[?a];

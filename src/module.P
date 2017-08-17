@@ -1,0 +1,2185 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the main file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ * 
+ * Code contents:
+ *
+ * 1 Compile time directives.
+ * 2 Main part (rules).
+ * 3 Main part (grammar)
+ * 4 Interpreter.
+ * 5 Query running.
+ * 6 File loading.
+ * 7 Error handler.
+ * 8 Configuration.
+ * 9 Service part.
+ * 10 Dynamic modules.
+ * 11 System stability.
+ * Compiler directory
+ * 1 Scanner.
+ * 2 Parser.
+ * 3 Semantic analysis.
+ * 4 Code generator.
+ * Builtins directory:
+ * 1 List library.
+ * 2 Regression tests mechanism.
+ * 3 Aggregation.
+ * and more.
+ */
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 1 Compile time directives.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part is evaluated on object file consulting.
+
+% Compile this program without specializing partially instantiated calls
+% and using prepropcessor.
+:- compiler_options([spec_off, xpp_on]).
+
+% Define in preprocessor exported programs prefix and mode to read it properly.
+#define PREFIX _^pathlp_247_
+#define EMPTYFILE 1560
+#define MAXDEPTH 5000
+#mode nostring "\!#'"
+
+% Export some predicates to usermod for user and compiler usage.
+:- export 'PREFIX is_q_constraint'/5, 'PREFIX is_q_equal'/3, 'PREFIX abolish'/1,
+          'PREFIX is_q_membership'/3, 'PREFIX is_q_property'/4, 'PREFIX main'/3,
+          'PREFIX is_q_subclass'/3,  'PREFIX is_q_type'/6, 'PREFIX directive'/1,
+          'PREFIX is_q_compare'/4, 'PREFIX callpred'/2, 'PREFIX index'/2, pln/0,
+          'PREFIX is_q_untproperty'/4, 'PREFIX runq'/2, 'PREFIX checkat'/1,
+          'PREFIX is_q_untmembership'/3, resetsystem/1, plpconf/1, load/3, ac/2,
+          need_abolish/1, createmodule/1, checkmodule/1, printstate/1, gensym/2,
+          retstable/1, dostable/1, takestr/2, pwrite/1, trystable/0, throwerr/2,
+          throwerr/1, getconfig/2, setconfig/4, setconfig/2, err/1, bgt/1,
+          makestableone/2.
+
+% Compile this program without specializing partially instantiated calls.
+:- set_global_compiler_options([spec_off]).
+
+:- import scanner/2, delimiter/3, caller/3, letter/3 from scanner.
+:- import parser/3 from parser.
+:- import seman/4 from semantic.
+:- import tr/3 from codegen.
+:- import bin/1, stop_tests/2, vars_commit/0 from builtins.
+
+% Import some predicates to avoid multiply usage of module names.
+:- import append/3, member/2, length/2 from basics.
+:- import term_to_atom/2 from string.
+:- import xpp_process_file/3, xpp_options/1, gpp_include_dir/1 from parse.
+
+% Declare some predicates to be created during runtime (some first time).
+:- dynamic 'PREFIX q_constraint def'/4, 'PREFIX q_equal def'   /2, ast/1,
+           'PREFIX q_membership def'/2, 'PREFIX q_property def'/3, comp/1,
+           'PREFIX q_subclass def'  /2, 'PREFIX q_type def'    /5, plpconf/1.
+
+% Declare some predicates for usage in compiled files too.
+:- multifile 'PREFIX q_constraint def'/4, 'PREFIX q_equal def'   /2,
+             'PREFIX q_membership def'/2, 'PREFIX q_property def'/3,
+             'PREFIX q_subclass def'  /2, 'PREFIX q_type def'    /5,
+             term_expansion/2.
+
+% Declare some predicates to be created during runtime (some second time).
+:- dynamic 'PREFIX q_constraint def'/4, 'PREFIX q_equal def'   /2, callpred/2,
+           'PREFIX q_membership def'/2, 'PREFIX q_property def'/3, unstable/1,
+           'PREFIX q_subclass def'  /2, 'PREFIX q_type def'    /5, unstable/2,
+           term_expansion/2.
+
+% Table some predicates for memoization and infinite loop avoidance.
+:- table 'PREFIX is_q_constraint'/5, 'PREFIX is_q_equal'   /3, norm_q_equal/3,
+         'PREFIX is_q_membership'/3, 'PREFIX is_q_property'/4, finished/2,
+         'PREFIX is_q_subclass'  /3, 'PREFIX is_q_type'    /6.
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 2 Main part (rules).
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part manages the program work.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-main/3 (+ command line arguments, + this file address,
+% + temporary directory address (could be empty)).
+% This is main program predicate which is active during all the session.
+
+'PREFIX main'(X, DIR, ATEMP) :-
+% Check if the user not tries to run the program from itself.
+                        plpconf(_) ->
+                        write(2, 'ERROR: The pathlp system cannot be'),
+                        write(2, ' invoked from within another'),
+                        writeln(2, ' running pathlp session.'),
+                        !,
+                        fail;
+% Find current working directory.
+                        path_sysop(cwd, HERE),
+% Preprocessor arguments.
+                        assert(xpp_options('-x -L +ccss "/*" "*/"')),
+% Check this file address argument.
+                        ((atom(DIR),
+                        path_sysop(chdir, DIR),
+                        path_sysop(chdir, HERE)) ->
+                        otherwise;
+                        write(2, 'ERROR: Wrong PathLP directory: '),
+                        writeln(DIR),
+                        fail),
+% Initialize gensym generator.
+                        asserta(plpconf([{gensym, 0}])),
+% Load all the modules.
+                        atom_concat(DIR, '/src/compiler/', COMPDIR),
+                        atom_concat(DIR, '/src/builtins/', BINDIR),
+                        atom_concat(COMPDIR, 'scanner.P', SCANNER),
+                        atom_concat(COMPDIR, 'parser.P', PARSER),
+                        atom_concat(COMPDIR, 'semantic.P', SEMANTIC),
+                        atom_concat(COMPDIR, 'codegen.P', CODEGEN),
+                        atom_concat(BINDIR, 'builtins.P', BUILTINS),
+                        assert(gpp_include_dir(BINDIR)),
+                        [BUILTINS],
+                        [SCANNER],
+                        [PARSER],
+                        [SEMANTIC],
+                        [CODEGEN],
+                        retract(gpp_include_dir(BINDIR)),
+% Check temporary files directory argument.
+                        (ATEMP \= '' ->
+                        (TEMP = ATEMP,
+                        (atom(TEMP),
+                        path_sysop(chdir, TEMP),
+                        path_sysop(chdir, HERE),
+                        checkdir(TEMP, DIRTEMP)) ->
+                        otherwise;
+                        write(2, 'ERROR: Wrong temporary directory: '),
+                        writeln(ATEMP),
+                        fail);
+% If empty, find temporary directory.
+                        ((path_sysop(tmpfilename, TMPNAME),
+                        path_sysop(dirname, TMPNAME, TEMP),
+                        checkdir(TEMP, DIRTEMP)) ->
+                        otherwise;
+                        writeln(2, 'ERROR: Need temporary directory'),
+                        fail)),
+                        path_sysop(expand, DIRTEMP, EXPTEMP),
+% Add current drive name to temporary directory if needed.
+                        atom_codes(HERE, HERELIST),
+                        atom_codes(EXPTEMP, TEMPLIST),
+                        ((drive(DRIVE, HERELIST, _),
+                        \+ drive(_, TEMPLIST, _)) ->
+                        ac([DRIVE, :, EXPTEMP], DRIVETEMP);
+                        EXPTEMP = DRIVETEMP),
+% Set libraries directory address for preprocessor.
+                        asserta(gpp_include_dir(DIR)),
+% Restore gensym generator state.
+                        retract(plpconf([{gensym, GENSYM}])),
+% Check the XSB tabling depth flags.
+                        MTAD = MAXDEPTH,
+                        MTSD = MAXDEPTH,
+%                       MTLD = MAXDEPTH,
+                        WRITE_DEPTH is MAXDEPTH + 3,
+                        set_prolog_flag(write_depth, WRITE_DEPTH),
+                        MTAA = bounded_rationality,
+                        MTSA = abstract,
+%                       MTLA = failure,
+                        set_prolog_flag(max_table_subgoal_size, MTSD),
+                        set_prolog_flag(max_table_subgoal_size_action, MTSA),
+                        set_prolog_flag(max_table_answer_size, MTAD),
+                        set_prolog_flag(max_table_answer_size_action, MTAA),
+%                       set_prolog_flag(max_table_answer_list_depth, MTLD),
+%                       set_prolog_flag(max_table_answer_list_action, MTLA),
+% Create all system configurations.
+% answers - flag if to print all answers together,
+% workdir - current work directory at session start.
+                        asserta(plpconf([{answers, wait}, {workdir, HERE},
+% gensym - gensym generator counter,
+% warnings - flag if print compilation warnings.
+% module - current module name.
+                            {gensym, GENSYM}, {warnings, on}, {module, def},
+% linenumber - current line number.
+% database - flag if abolish tables.
+                            {linenumber, 0}, {database, same}, {version, '2.0'},
+% stability - flag if execute always stability check.
+% tempdir - temporary files directory.
+                            {stability, automatic}, {tempdir, DRIVETEMP},
+% allmodules - all exist modules : [name / equality / typing, ...] list.
+% equality - flag if use logical equality.
+% typing - flag if execute typing inference.
+                            {allmodules, [def / empty / inference]},
+% table depth - flags controlling stopping table infinite loops.
+                            {'table depth', [[answer, MTAD, MTAA], 
+%                               [list, MTLD, MTLA],
+                                [subgoal, MTSD, MTSA]]},
+% stability table depth - flags controlling stopping table infinite loops
+% during stability check process.
+                            {'stability table depth', [[answer, MTAD, MTAA], 
+%                               [list, MTLD, MTLA],
+                                [subgoal, MTSD, MTSA]]},
+% table depth default - flags showing stopping table infinite loops defaults.
+                            {'default table depth', [[answer, MTAD, MTAA], 
+%                               [list, MTLD, MTLA],
+                                [subgoal, MTSD, MTSA]]},
+% runmode - running mode: regular as query or stability check process
+                            {runmode, query},
+% timeout - infinite loop timeout in seconds.
+                            {timeout, 10.0}, 
+                            
+% pathlpdir - directory in which this file exists.
+% tracing - flag if print backtracking stack on errors.
+% testing - testing mechanism state.
+                            {pathlpdir, DIR}, {tracing, no}, {testing, work}])),
+% Intialize default module.
+                        createmodule(def),
+                        bgt(def),
+% Check the command line arguments.
+                        (X = '';
+% If not empty, try to parse them.
+                        (atom(X),
+                        atom_codes(X, F),
+                        comline(FILES, F, []),
+% Set if only help and exit argument.
+                        (FILES = ['-h'] ->
+                        ALLFILES = ['-help', '-halt'];
+                        ALLFILES = FILES),
+% Treat command line arguments.
+                        catch(arguments(ALLFILES), ERR1,
+                            errorfalsehandler(ERR1)));
+                        writeln(2, 'ERROR: Wrong arguments'),
+                        gc(halt(1))),
+                        !,
+% Find time zone.
+                        (predicate_property(_:shell_to_list(_, _, _, _),
+                            built_in),
+% Time zone in Linux or Unix.
+                        shell_to_list('/usr/bin/env date +%:::z', [[ZONE]],
+                            _, PID),
+                        PID = 0,
+                        integer(ZONE);
+% Time zone in Windows.
+                        catch(timezone(ZONE), ERR2, errorfalsehandler(ERR2));
+% Time zone not found.
+                        ZONE = none),
+                        !,
+% Main program loop.
+                        repeat,
+                        \+ catch(pathlploop(main, user_input, ZONE),
+                            ERR3, errorhandler(ERR3)),
+% Exit.
+                        writeln('Good bye.'),
+                        gc(halt).
+% Error exit.
+'PREFIX main'(_, _, _) :- writeln(2, 'FATAL ERROR'),
+                          gc(halt(1)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkdir/2 (+ directory name, - proper directory name).
+% This predicate checks is the directory is writable).
+
+% Create proper name finished by slash.
+checkdir(DIR, FULL) :- ((atom_concat(_, /, DIR);
+                       atom_concat(_, '\\', DIR)) ->
+                       DIR = FULL;
+                       atom_concat(DIR, /, FULL)),
+% Find temporary file name in the argument directory.
+                       findname(FULL, TEMP),
+% Try to open it for writing and immediately remove.
+                       catch((open(TEMP, write, X),
+                       close(X),
+                       path_sysop(rm, TEMP)),
+                       _,
+% Fail if error.
+                       fail).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findname/2 (+ directory, - file).
+% This predicate finds original file name in argument directory.
+
+% Create file name.
+findname(DIR, TEMP) :- atom_concat(DIR, file, PREFIXNAME),
+                       gensym(PREFIXNAME, NAME),
+% If exists, try again, gensym will help to create new name.
+                       (file_exists(NAME) ->
+                       findname(DIR, TEMP);
+                       TEMP = NAME).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% arguments/1 (+ command line arguments list).
+% This predicate treats command line arguments.
+
+% Check system stability at the end, if needed.
+arguments([]) :- trystable.
+% Exit and ignore the rest.
+arguments(['-halt'|_]) :- gc(halt).
+arguments(['-hlt', STATUS|_]) :- (is_number_atom(STATUS) ->
+                                 (atom_codes(STATUS, Codes),
+                                 number_codes(NUMBER,Codes));
+                                 NUMBER = -1),
+                                 gc(halt(NUMBER)).
+% All options.
+arguments(['-enormal'|FILES]) :- arg(gc(equality(normal)), FILES).
+arguments(['-module', MOD|FILES]) :- arg(gc(module(MOD)), FILES).
+arguments(['-tcheck'|FILES]) :- arg(gc(typing(checking)), FILES).
+arguments(['-eempty'|FILES]) :- arg(gc(equality(empty)), FILES).
+arguments(['-btrace'|FILES]) :- arg(gc(tracing(trace)), FILES).
+arguments(['-stdin'|FILES]) :- arguments(['_'|FILES]).
+arguments(['-state'|FILES]) :- arg(gc(state), FILES).
+arguments(['-reset'|FILES]) :- arg(gc(resetsystem), FILES).
+arguments(['-sinit'|FILES]) :- arg(gc(stability(initiated)), FILES).
+arguments(['-await'|FILES]) :- arg(gc(answers(wait)), FILES).
+arguments(['-debug'|FILES]) :- arg(gc(testing(debug)), FILES).
+arguments(['-aall'|FILES]) :- arg(gc(answers(all)), FILES).
+arguments(['-help'|FILES]) :- arg(gc(help), FILES).
+arguments(['-stb', MOD|FILES]) :- arg(gc(stable(MOD)), FILES).
+arguments(['-stab'|FILES]) :- arg(gc(stable(def)), FILES).
+arguments(['-tinf'|FILES]) :- arg(gc(typing(inference)), FILES).
+arguments(['-saut'|FILES]) :- arg(gc(stability(automatic)), FILES).
+arguments(['-woff'|FILES]) :- arg(gc(warnings(off)), FILES).
+arguments(['-work'|FILES]) :- arg(gc(testing(work)), FILES).
+arguments(['-new', MOD|FILES]) :- arg(gc(newmodule(MOD)), FILES).
+arguments(['-won'|FILES]) :- arg(gc(warnings(on)), FILES).
+arguments(['-bno'|FILES]) :- arg(gc(tracing(no)), FILES).
+arguments(['-tom', lpp, FILE|FILES]) :- arg(load(FILE, _, library), FILES).
+arguments(['-tom', MOD, FILE|FILES]) :- arg(load(FILE, MOD, saved), FILES).
+arguments(['-h'|FILES]) :- arg(gc(help), FILES).
+% If it's not an option, treat as file name to load to current module.
+arguments([F|FILES]) :- getconfig(module, M),
+                        arg(load(F, M, saved), FILES).
+% Any error.
+arguments(_) :- writeln(2, 'ERROR: arguments reading'),
+                gc(halt(1)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% timezone/1 (- time zone)
+% This predicate tries to find time zone assuming you're in Windows.
+
+% Read now time in Prolog, GMT.
+timezone(ZONE) :- standard:datime(datime(_, _, _, R1, R2, _)),
+% Read now time in operating system, the proper local one.
+                  shell_to_list('echo.|time', [[_, _, _, _, X]|_], _, P),
+% Success to read.
+                  P = 0,
+% Take the hours and the minutes.
+                  atom_codes(X, Y),
+                  length(Z, 6),
+                  append(T, Z, Y),
+% Could be less than ten hours.
+                  (length(T, 4)->
+                  U = [0'0|T];                     % 0' - ascii
+                  U = T),
+% Fetch the numbers.
+                  U = [A1, A2, _, B1, B2],
+                  number_codes(ANS1, [A1, A2]),
+                  number_codes(ANS2, [B1, B2]),
+% If same minutes.
+                  (ANS2 = R2 ->
+% Calculate the time zone.
+                  ZONE is (ANS1 - R1 + 24) mod 24;
+% If the different between minutes is just one, retry, else fail.
+                  (0 is (R2 - ANS2 + 1) mod 60 ->
+                  timezone(ZONE))),
+                  !.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pathlploop/3 (+ kind of input, + input stream, + additional information)
+% This predicate is the main program fail loop.
+
+% If we're in the command line, reset lines counter and print a prompt.
+pathlploop(KIND, S, OUTS) :- write(''),
+                             (KIND == file ->
+                             otherwise;
+                             setconfig(linenumber, 0),
+                             prompt(OUTS)),
+                             !,
+% Take next input portion.
+                             take_input(S, X, OUTS, KIND),
+% Could be empty.
+                             (X = "";
+% A library.
+                             (KIND == file,
+                             append("### ", DIRECTIVE, X),
+                             !,
+                             calldirective(DIRECTIVE, OUTS);
+% Regular input, scan it.
+                             ((scanner(X, Y),
+                             (Y = [];
+% If not empty, parse it.
+                             (parser(Y, Z, KIND),
+                             (Z = [];
+% If not empty, make semantic analysis.
+                             (seman(Z, T, VARS, P),
+% Generate the code.
+                             ((tr((KIND, X, VARS), T, U),
+% Take first option.
+                             !,
+% If we're in the file, write abolisher information and the code.
+                             (KIND == file ->
+                             write(OUTS, P),
+                             writeln(OUTS, U),
+                             flush_output(OUTS);
+% If we're in the command line, check if the line is proper query.
+                             ((atom_concat(?-, V, U);
+                             atom_concat(:-, V, U)) ->
+% If yes, call as negative stream.
+                             (open(atom(V), read, I),
+                             read(I, RES),
+                             close(I),
+                             call(RES));
+% If no, write to file and consult.
+                             prcall(U)),
+                             vars_commit));
+                             err('ERROR: Interpreter problem')));
+                             err('ERROR: Semantic problem')));
+                             assert(comp(_))));
+                             assert(comp(_))))),
+                             !.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% calldirective/2 (+ directive, + output stream)
+% This predicate loads a library.
+
+calldirective(DIRECTIVE, FO) :- atom_codes(LIB, DIRECTIVE),
+                                (append(_, ".lpp", DIRECTIVE),
+                                ((path_sysop(dirname, LIB, LIBDIR),
+                                LIBDIR = '',
+                                getconfig(pathlpdir, X),
+                                changeslash(X, XX),
+                                ac([XX, '/lpp/', LIB], FULLLIB)),
+                                path_sysop(isplain, FULLLIB),
+                                path_sysop(readable, FULLLIB);
+                                (path_sysop(isplain, LIB),
+                                path_sysop(readable, LIB),
+                                path_sysop(expand, LIB, FULLLIB))) ->
+                                !,
+                                write(FO, '#include "'),
+                                changeslash(FULLLIB, LIBRARY),
+                                write(FO, LIBRARY),
+                                writeln(FO, '"');
+                                atom_concat('ERROR: Wrong library: ', LIB, MSG),
+                                err(MSG)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% changeslash/1 (+ from name, - to name)
+% This predicate changes Windows file name to Linux one.
+
+changeslash(ATOMA, ATOMB) :- \+ ATOMA == [],
+                             atom(ATOMA),
+                             !,
+                             atom_codes(ATOMA, STRA),
+                             changeslash(STRA, STRB),
+                             atom_codes(ATOMB, STRB).
+changeslash([], []).
+changeslash([A|B], [C|D]) :- (A == 0'\\ ->
+                             C = 0'/;
+                             A = C),
+                             changeslash(B, D).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% arg/2 (+ command, + arguments)
+% This predicate executes current argument command and treats the rest.
+
+arg(ARG, FILES) :- ARG,
+                   arguments(FILES).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prompt/1 (+ time zone)
+% This predicate prints primary prompt.
+
+% If time zone is unknown, don't print a time stamp.
+prompt(none) :- !,
+                write('PathLP '),
+% If we aren't in the directory where we started, print the current one.
+                printmod,
+                printdir,
+                write('> ?- ').
+% If time zone is known, find the proper time.
+prompt(ZONE) :- standard:datime(datime(_, _, _, H, M, _)),
+                H1 is (H + ZONE) mod 24,
+                write('PathLP ['),
+                twodigits(H1),
+                write(:),
+                twodigits(M),
+                write('] '),
+                printmod,
+% If we aren't in the directory where we started, print the current one.
+                printdir,
+                write('> ?- '),
+                !.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% take_input/4 (+ input stream, - input, + time zone, + kind of input)
+% This predicate takes next input.
+
+% Take one line.
+take_input(S, INPUT, ZONE, KIND) :- takeline(S, NEWLINE),
+% A library include.
+                                    (append("### ", _, NEWLINE),
+                                    !,
+                                    NEWLINE = INPUT;
+% Prevent changing directory for full command line command
+                                    (dir(_, _, NEWLINE, []),
+                                    KIND = main ->
+                                    NEWLINE = LINE;
+                                    takedir(NEWLINE, LINE, KIND)),
+% Remove comments for a change directory command.
+                                    ((append(A, [0'%|_], LINE),
+                                    \+ member(0'%, A)) ->
+                                    otherwise;
+                                    A = LINE),
+% If just delimiters.
+                                    (empty(A, []) ->
+                                    INPUT = "";
+% Try to change directory.
+                                    ((dir(DIRNAME, [], A, []),
+                                    callcd(DIRNAME, KIND, INPUT)) ->
+% Not changed.
+                                    otherwise;
+% Take more if needed.
+                                    take_input(S, LINE, NEWINPUT, ZONE, KIND),
+% If just delimiters now.
+                                    (empty(NEWINPUT, "") ->
+                                    INPUT = "";
+                                    INPUT = NEWINPUT)))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prcall/1 (+ code line)
+% This predicate creates new file for code line and consults it.
+
+% Find temporary file name.
+prcall(X) :- getconfig(tempdir, DIR),
+             findname(DIR, TMPNAME),
+% Save the code there.
+             open(TMPNAME, write, TMPW),
+             writeln(TMPW, X),
+             close(TMPW),
+% Try to consult.
+             catch(consult(TMPNAME), ERROR,
+                 (rmprcall(TMPNAME, ''),
+                 throw(ERROR))),
+% Remove any temporary files anyway.
+             rmprcall(TMPNAME, '').
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% printmod/0
+% This predicate prints current module in prompt, if not default.
+
+% Read current directory.
+printmod :- getconfig(module, MOD),
+            MOD \= def ->
+            pwrite(['{', MOD, '} ']);
+            otherwise.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% printdir/0
+% This predicate prints current working directory in prompt, if needed.
+
+% Read current directory.
+printdir :- path_sysop(cwd, DIR),
+% Read directory we started from.
+            getconfig(workdir, HOME),
+% Print if they aren't the same thing.
+            DIR \= HOME ->
+            ((path_sysop(expand, '~', TILDA),
+            atom_concat(CLEARTILDA, /, TILDA),
+            \+ atom_concat(_, '~', CLEARTILDA),
+            atom_concat(CLEARTILDA, HERE, DIR)) ->
+            atom_concat('~', HERE, PRINTDIR);
+            DIR = PRINTDIR),
+            (pwrite(['(', PRINTDIR, ') ']));
+            otherwise.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% twodigits/1 (+ number)
+% This predicate prints number in two digits, with zero before if needed.
+
+twodigits(X) :- (X >= 10;
+                write(0)),
+                write(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% takeline/2 (+ input stream, - input)
+% This predicate reads one line from the input.
+
+% Read the line.
+takeline(STREAM, INPUT) :- file_read_line_list(STREAM, LINE),
+% Update lines counter.
+                           getconfig(linenumber, L),
+                           L1 is L + 1,
+                           setconfig(linenumber, L1),
+% Remove all kinds of end of line symbols.
+                           sect(LINE, INPUT).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% callcd/3 (+ directory name list, + kind of input,
+% - runtime directive code list)
+% This predicate tries to change current working directory.
+
+% Create a code for runtime directive.
+callcd(X, file, ANS) :-
+                       atom_codes(Y, X),
+                       ac([':- path_sysop(chdir, ''', Y, ''')@_prolog;'], CODE),
+                       atom_codes(CODE, ANS).
+% Change directory in the command line.
+callcd(X, main, "") :- atom_codes(DIR, X),
+                       path_sysop(expand, DIR, PLACE),
+                       path_sysop(isdir, PLACE),
+                       path_sysop(readable, PLACE),
+                       path_sysop(chdir, PLACE).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% takedir/3 (+ input line, - input line without change directory command,
+% + kind of input)
+% This predicate removes from the input line the changing directory command tail
+% and changes to it, if any.
+
+% Try to find a directory name.
+takedir(LINE, INPUT, main) :- dir(DIR, INPUT1, LINE, []),
+                              callcd(DIR, main, _),
+                              !,
+% If need to continue.
+                              (finished(INPUT1, []) ->
+                              INPUT = INPUT1;
+                              write('[cont''d] '),
+                              printdir,
+                              write('> '),
+                              getconfig(linenumber, L),
+                              L1 is L - 1,
+                              setconfig(linenumber, L1),
+% Read the line rest.
+                              takeline(0, INPUT2),
+                              append(INPUT1, INPUT2, INPUT)).
+takedir(LINE, LINE, _).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% take_input/5 (+ input stream, + accumulated input, - input, + time zone,
+% + kind of input)
+% This predicate reads input rest, if needed.
+
+% Try to change directory first.
+take_input(S, LINE, INPUT, ZONE, KIND) :-
+                              (KIND = main ->
+                              takedir(LINE, A, KIND);
+                              LINE = A),
+% If need to continue.
+                              ((nonstcom(APR, A, []),
+                              finished(APR, [])) ->
+                              A = INPUT;
+% If just delimiters.
+                              (empty(A, []) ->
+                              INPUT = "";
+% Take rest the line.
+                              prompt(S, ZONE),
+                              (takeline(S, B) ->
+                              takedir(B, NONLINE, KIND),
+                              append(A, [0'\n|NONLINE], LINES),     % 0' - ascii
+% Take the rest lines.
+                              take_input(S, LINES, INPUT, ZONE, KIND);
+% End of file.
+                              nl,
+                              A = INPUT))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% rmprcall/2 (+ temporary file name, + module name)
+% This predicate tries to remove all kinds of temporary files,
+% including for parameter module.
+
+rmprcall(TMPNAME, MOD) :- tryrm(TMPNAME, ''),
+                          tryrm(TMPNAME, '.P'),
+                          tryrm(TMPNAME, '.xwam'),
+                          ac([TMPNAME, '_', MOD], NAME),
+                          tryrm(NAME, '.xwam').
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prompt/2 (+ input stream, + time zone)
+% This predicate prints the secondary prompt.
+
+% If standard input.
+prompt(user_input, ZONE) :- ZONE = none ->
+% The length depends on time stamp in primary prompt, if any.
+                            write('        > ');
+                            write('            > ').
+% If in the file, do nothing.
+prompt(_, _).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 3 Main part (grammar).
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part is main part grammar.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% drive/3 (- drive name)
+% This predicate checks if the input directory name starts with drive letter.
+
+drive(X) --> letter(Y),
+             ":",
+             {atom_codes(X, [Y])}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% comline/3 (- arguments list)
+% This predicate parses command line arguments.
+
+% There will be more.
+comline([X|Y]) --> comelem(Z),
+                   " ",
+                   !,
+                   {atom_codes(X, Z)},
+                   comline(Y).
+% Last one.
+comline([X]) --> comelem(Y),
+                 {atom_codes(X, Y)}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% comelem/3 (- argument characters list)
+% This predicate parses one command line argument.
+
+% Accumulate non space characters.
+comelem([X|Y]) --> [X],
+                   {X > 0' },                    % 0' - ascii
+                   !,
+                   comelem(Y).
+% End of argument.
+comelem([]) --> [].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dir/4 (- directory name list, - rest input list)
+% This predicate parses the changing directory command.
+
+% Trailing spaces.
+dir(DIR, INPUT) --> " ",
+                    !,
+                    dir(DIR, INPUT).
+% Impilicite home directory.
+dir(DIR, INPUT) --> dirlist(INPUT),
+                    "cd",
+                    dirsp,
+                    {getconfig(workdir, HERE),
+                    atom_codes(HERE, DIR)}.
+% Given directory.
+dir(DIR, INPUT) --> dirlist(INPUT),
+                    "cd ",
+                    dirn(DIR),
+                    dirsp.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dirn/3 (- directory name)
+% This predicate parses the directory name in the changing directory command.
+
+% Trailing spaces.
+dirn(DIR) --> " ",
+              dirn(DIR).
+% Quoted name.
+dirn(DIR) --> "'",
+              !,
+              dirlist(DIR),
+              "'".
+% Unquoted name.
+dirn(DIR) --> dirlist(DIR).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dirlist/3 (- characters list)
+% This predicate parses any characters list.
+
+dirlist([]) --> "".
+dirlist([X|Y]) --> [X],
+                   dirlist(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dirsp/2
+% This predicate skips any spaces.
+
+dirsp --> " ",
+          !,
+          dirsp.
+dirsp --> "".
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nonstcom/3 (+ uncommented by '%' accumulator)
+% This predicate checks there aren't unclosed comments.
+ 
+nonstcom(REST) --> "%",
+                   !,
+                   droppc(REST).
+nonstcom([0'/, 0'*|REST]) --> "/*",
+                              !,
+                              findendcom(REST).
+nonstcom([X|REST]) --> [X],
+                       !,
+                       nonstcom(REST).
+nonstcom([]) --> "".
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findendcom/3 (+ uncommented by '%' accumulator)
+% This predicate finds comments close.
+
+findendcom([0'*, 0'/|REST]) --> "*/",
+                                !,
+                                nonstcom(REST).
+findendcom([X|REST]) --> [X],
+                         findendcom(REST).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% droppc/3 (+ uncommented by '%' accumulator)
+% This predicate drops line comment.
+
+droppc(REST) --> "\n",
+                 !,
+                 nonstcom(REST).
+droppc(REST) --> [_],
+                 !,
+             droppc(REST).
+droppc([]) --> "".
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% finished/2 (tabled)
+% This predicate checks if the input finishes by semicolon and maybe delimiters
+% after that.
+
+% Linux shell caller.
+finished --> caller(_), 
+             !.
+% Full line passed to Prolog.
+finished --> backq,
+             !.
+% Finish by delimiter, don't print error message on opened multiline comments.
+finished --> finished,
+             delimiter(true).
+finished --> coloned.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% backq/2
+% This predicate checks if the input is backquoted line with maybe delimiters
+% on the sides.
+
+backq --> delimiter(true),
+          backq.
+backq --> "`",
+          backqcont.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% backqcont/2
+% This predicate checks if the input continues a backquoted line,
+% after starting backquote, with maybe delimiter at the end.
+
+backqcont --> [_],
+              backqcont.
+backqcont --> "`",
+              backqend.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% backqend/2
+% This predicate checks if the input can be only delimiters after
+% the backquoted line.
+
+backqend --> delimiter(true),
+             backqend.
+backqend --> [].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% coloned/2
+% This predicate checks if the input finishes by semicolon.
+
+coloned --> [_],
+            coloned.
+coloned --> ";".
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% empty/2
+% This predicate checks if the line is empty.
+
+empty --> (delimiter(true);
+          ";"),
+          empty.
+empty --> "".
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 4 Interpreter.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-checkat/1 (+ property)
+% This predicate confirms the argument is not read only property name.
+
+'PREFIX checkat'(X) :- sk_not((atom(X),
+                       atom_concat('_', _, X))),
+                       sk_not((compound(X),
+                       X =.. [Y|_],
+                       atom(Y),
+                       atom_concat('_', _, Y))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkdeep/2 (? list, ? term)
+% This predicate executes occurs check.
+
+checkdeep(X, Y) :- sk_not((compound(X),
+                   nonvar(Y),
+                   X =.. [_|LIST],
+                   member(Y, LIST))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% sorted/3 (+ module name, ? small, ? big)
+% This predicate orders two terms from left to right.
+% If at least one is a variable, they are unified.
+
+sorted(MOD, X, Y) :- (var(X);
+                     var(Y)) ->
+                     X = Y;
+                     'PREFIX is_q_compare'(MOD, lessequal, X, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-callpred/2 (+ module name, + predicate)
+% This predicate calls a given predicate from a given module.
+
+'PREFIX callpred'(A, B) :- \+ atom(A),
+                           !,
+                           throwerr('wrong module name for predicate', B).
+% Usermod.
+'PREFIX callpred'('_prolog', A) :- !,
+                                   A.
+'PREFIX callpred'(A, B) :- A:B.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% mywriteln/1 (+ atoms_list)
+% This predicate prints the arguments with the new line.
+
+mywriteln(X) :- pwrite(X),
+                nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-abolish/1 (? module name)
+% This predicate abolishes tabled predicates to create new dynamic space.
+% If module name is bounded, so it will be done for particular module.
+
+'PREFIX abolish'(X) :- nonvar(X),
+                       !,
+                       checkmodule(X),
+                       myabolish(X).
+'PREFIX abolish'(_) :- getconfig(allmodules, LIST),
+                       forall(member(M / _ / _ , LIST), myabolish(M)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% myabolish/1 (+ module name)
+% This predicate abolishes tabled predicates to create new dynamic module.
+
+myabolish(MOD) :- %abolish_all_tables.
+                  %/* TODO
+                  abolish_table_pred('PREFIX is_q_membership'(MOD, _, _)),
+                  abolish_table_pred('PREFIX is_q_subclass'(MOD, _, _)),
+                  abolish_table_pred('PREFIX is_q_property'(MOD, _, _, _)),
+                  abolish_table_pred('PREFIX is_q_equal'(MOD, _, _)),
+                  abolish_table_pred('PREFIX is_q_type'(MOD, _, _, _, _, _)),
+                  abolish_table_pred('PREFIX is_q_constraint'(MOD, _, _, _, _)),
+                  abolish_table_pred(norm_q_equal(MOD, _, _)).
+        %          */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-index/2 (+ choice number, + module name)
+% This predicate indexes language database as tries in multifile system.
+
+% Find all clauses.
+'PREFIX index'(CODE, MOD) :- ac(['PREFIX q_equal', ' ', MOD], PREDEQ),
+                             functor(CALLEQ, PREDEQ, 2),
+                             findall(X, clause(CALLEQ, X), LIST),
+% If before multifile command run, just remember them.
+                             (CODE == 1 ->
+                             asserta(ast(LIST));
+% Otherwise find a new added clause.
+                             (retract(ast(OLDLIST)),
+                             member(PRED, LIST),
+                             \+ member(PRED, OLDLIST),
+                             !,
+                             PRED =.. [NAME|_],
+                             atom_concat('PREFIX q_equal', F, NAME),
+                             indexall(F))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% indexall/1 (+ module name)
+% This predicate indexes module database as tries in multifile system.
+
+indexall(NAME) :- forall(member({X, Y}, [{type, 5}, {membership, 2},
+                      {property, 3}, {subclass, 2}, {equal, 2}]),
+                      (ac(['PREFIX fact_q_', X, NAME], ANS),
+                      index(ANS/Y, trie))),
+                      atom_concat('PREFIX q_constraint', NAME, CONSTR),
+                      index(CONSTR/4, trie).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% gc/1 (+ goal)
+% This predicate is delegator from builtin caller in another module.
+
+gc(X) :- bin(X).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_property/4 (+ module name, ? source, ? property, ? target)
+% (tabled)
+% This predicate locates object path expression edge.
+
+'PREFIX is_q_property'(MOD, X, Y, Z) :- 'PREFIX is_q_untproperty'(MOD, X, Y, Z).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_untproperty/4 (+ module name, ? object, ? property, ?guard)
+% (partially)
+% This predicate evaluates untabled property.
+
+% Location in memory.
+'PREFIX is_q_untproperty'(MOD, X, Y, Z) :- 
+                                   (usermod:'PREFIX q_property'(MOD, X, Y, Z);
+                                   getconfig(MOD, equality, normal),
+                                   usermod:'PREFIX q_property'(MOD, XX, YY, ZZ),
+                                   'PREFIX is_q_equal'(MOD, X, XX),
+                                   'PREFIX is_q_equal'(MOD, Y, YY),
+                                   'PREFIX is_q_equal'(MOD, Z, ZZ)).
+% Builtins.
+#include "../src/builtins/props.P"
+#include "../src/builtins/lists.P"
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_type/6 (+ module name, ? source type, ? property, ? target type,
+% ? minor, ? major) (tabled)
+% This predicate locates type path expression edge.
+
+% Location in memory.
+'PREFIX is_q_type'(MOD, X, Y, Z, U, V) :-
+                               (usermod:'PREFIX q_type'(MOD, X, Y, Z, UU, VV);
+                               getconfig(MOD, equality, normal),
+                               usermod:'PREFIX q_type'(MOD, XX, YY, ZZ, UU, VV),
+                               'PREFIX is_q_equal'(MOD, X, XX),
+                               'PREFIX is_q_equal'(MOD, Y, YY),
+                               'PREFIX is_q_equal'(MOD, Z, ZZ)),
+% Cardinality constraints.
+                               sorted(MOD, U, UU),
+                               sorted(MOD, VV, V).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_membership/3 (+ module name, ? object, ? type) (tabled)
+% This predicate locates membership relationship.
+'PREFIX is_q_membership'(MOD, X, Y) :- 'PREFIX is_q_untmembership'(MOD, X, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_untmembership/3 (+ module name, ? object, ? type) (partially)
+% This predicate evaluates untabled membership.
+
+% Location in memory.
+'PREFIX is_q_untmembership'(MOD, X, Y) :-
+                                     usermod:'PREFIX q_membership'(MOD, X, Y);
+                                     getconfig(MOD, equality, normal),
+                                     usermod:'PREFIX q_membership'(MOD, XX, YY),
+                                     'PREFIX is_q_equal'(MOD, X, XX),
+                                     'PREFIX is_q_equal'(MOD, Y, YY).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_subclass/3 (+ module name, ? subtype, ? type) (tabled)
+% This predicate locates subclass relationship.
+
+% Location in memory.
+'PREFIX is_q_subclass'(MOD, X, Y) :- (usermod:'PREFIX q_subclass'(MOD, X, Y);
+                                     getconfig(MOD, equality, normal),
+                                     usermod:'PREFIX q_subclass'(MOD, XX, YY),
+                                     'PREFIX is_q_equal'(MOD, X, XX),
+                                     'PREFIX is_q_equal'(MOD, Y, YY)),
+                                     X \= Y.
+
+#include "backgt/equal.P"
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_compare/4 (+ module name, + option, + left, + right)
+% This predicate compares two terms.
+
+'PREFIX is_q_compare'(MOD, O, X, Y) :- comp(O, X, Y);
+                                       getconfig(MOD, equality, normal),
+                                       'PREFIX is_q_equal'(MOD, X, XX),
+                                       'PREFIX is_q_equal'(MOD, Y, YY),
+                                       comp(O, XX, YY).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% comp/3 (+ option, + left, + right)
+% This predicate compares two terms.
+
+% Fail if variables.
+comp(_, X, Y) :- (var(X);
+                 var(Y)),
+                 !,
+                 fail.
+comp(O, X, X) :- (X == *;
+                 number(X)),
+                 member(O, [lessequal, grateequal]).
+comp(O, X, Y) :- number(Y),
+                 (X == *;
+                 number(X),
+                 Y < X),
+                 member(O, [grate, grateequal]).
+comp(O, X, Y) :- number(X),
+                 (Y == *;
+                 number(Y),
+                 X < Y),
+                 member(O, [less, lessequal]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_constraint/5 (+ module name, + query, + variables list,
+% + input text, + name) (tabled)
+% This predicate locates a constraint in memory.
+
+'PREFIX is_q_constraint'(MOD, X, Y, Z, T) :-
+                                 usermod:'PREFIX q_constraint'(MOD, X, Y, Z, T).
+
+% Check different tests.
+'PREFIX is_q_constraint'(MOD,
+            (getconfig(testing, debug),
+            '_^pathlp_247_ is_q_property'(MOD, Test1, Edge1, Answer1),
+            '_^pathlp_247_ is_q_property'(MOD, Test2, Edge2, Answer2),
+            nonvar(Edge1),
+            nonvar(Edge2),
+            Edge1 = answer(Vars1),
+            Edge2 = answer(Vars2),
+            Test1 == Test2,
+            (Vars1 @< Vars2;
+            Answer1 @< Answer2)),
+            [var('answer2', Answer2), var('answer1', Answer1), var('vars2',
+            Vars2), var('vars1', Vars1)],
+            'Different tests with the same name'(Test1), same_name_tests).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 5 Query running.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part treats query running.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-runq/2 (+ query, + variables list)
+% This predicate runs a query.
+
+% Pick right answers printing.
+'PREFIX runq'(X, Y) :- getconfig(answers, ALL),
+                       callq(X, Y, ALL).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% callq/2 (+ query, + variables list)
+% This predicate runs a query recursively.
+callq(X, [], _) :- call_tv(X, REGVAL),
+                   writeln(REGVAL),
+                   !.
+callq(X, [Y|Z], ALL) :- call_tv(X, REGVAL),
+                        printans([Y|Z], REGVAL),
+                        action(ALL),
+                        nl,
+                        writeln(true).
+callq(_, _, all) :- nl,
+                    fail.
+callq(_, _, _) :- writeln(false).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-directive/1 (+ directive)
+% This predicate runs a directive.
+
+'PREFIX directive'(X) :- once(X) ->
+                         otherwise;
+                         writeln('Warning: directive fail').
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% action/0
+% This predicate asks a user if stop to print answers.
+% Fails if answers flag is all.
+
+action(wait) :- (file_read_line_list(user_input, LINE) ->
+                sect(LINE, INPUT);
+                nl,
+                INPUT = 0),
+                !,
+                (INPUT = "" ->
+                otherwise;
+                (\+ member(INPUT, [";", " "]) ->
+                writeln('";", " " is continue'),
+                writeln('ENTER is stop'),
+                action(wait))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% retrall/0
+% This predicate removes asserted information in error handler.
+
+retrall :- retractall(comp(_)),
+           retractall(unstable(_, _)),
+           retractall(unstable(_)).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 6 File loading.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part treats file loading.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% load/3 (+ file name, + module name, + reset flag)
+% This predicate chooses a procedure for file loading.
+
+% Errors.
+load(X, _, _) :- var(X),
+                 throwerr('variable file name').
+load(X, _, _) :- \+ atom(X),
+                 throwerr('wrong file name', X).
+% A library.
+
+load(FILE, MOD, T) :- atom_concat('~', _, FILE),
+                      !,
+                      path_sysop(expand, FILE, FULL),
+                      load(FULL, MOD, T).
+load(FINP, _, library) :- atom_concat(NAME, '.ppl', FINP),
+                          atom_concat(NAME, '.lpp', FOUTP),
+                          !,
+                          ((path_sysop(isplain, FINP),
+                          path_sysop(readable, FINP)) ->
+                          fromppltop(FINP, FOUTP, library, FINP);
+                          throwerr('Can''t open a library for reading', FINP)).
+% Errors.
+load(FINP, _, library) :- throwerr('Wrong library file name', FINP).
+load(_, Y, _) :- checkmodule(Y),
+                 fail.
+% Standard input.
+load('_', M, T) :-
+           !,
+           getconfig(tempdir, DIR),
+           findname(DIR, TMPNAME),
+% Check that not trying to load from another same load.
+           atom_concat(TMPNAME, '.ppl', FINP),
+           atom_concat(TMPNAME, '.P', FOUTP),
+% Read a file.
+           takefile(FINP),
+           call_cleanup(load(FINP, FOUTP, T, 'from standard input', M, TMPNAME),
+               (tryrm(FINP, ''),
+               rmprcall(TMPNAME, M))).
+% Full language name.
+load(FINP, M, T) :- atom_concat(NAME, '.ppl', FINP),
+                    atom_concat(NAME, '.P', FOUTP),
+                    !,
+                    ((path_sysop(isplain, FINP),
+                    path_sysop(readable, FINP)) ->
+                    load(FINP, FOUTP, T, FINP, M, NAME);
+                    throwerr('Can''t open a file for reading', FINP)).
+% Full Prolog name.
+load(FINP, _, _) :- atom_concat(_, '.P', FINP),
+                    !,
+                    ((path_sysop(isplain, FINP),
+                    path_sysop(readable, FINP)) ->
+                    consult(FINP);
+                    throwerr('Can''t open a file for reading', FINP)).
+% Implied language name.
+load(F, M, T) :- atom_concat(F, '.ppl', FINP),
+                 path_sysop(isplain, FINP),
+                 path_sysop(readable, FINP),
+                 !,
+                 load(FINP, M, T).
+% Implied Prolog name.
+load(F, _, _) :- atom_concat(F, '.P', FINP),
+                 path_sysop(isplain, FINP),
+                 path_sysop(readable, FINP),
+                 !,
+                 consult(FINP).
+% Non regular Prolog name.
+load(FINP, _, _) :- (path_sysop(isplain, FINP),
+                    path_sysop(readable, FINP)) ->
+                    consult(FINP);
+                    throwerr('Can''t open a file for reading', FINP).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% load/6 (+ input file name, + output file name, + reset system flag,
+% + input file name for printing, + module name, + name without extension)
+% This predicate compiles and loads a language file to particular module.
+
+% Find object name for particular module.
+load(INP, OUTP, T, N, MOD, BASE) :- ac([BASE, '_', MOD, '.xwam'], MODCODE),
+% If already compliled in Prolog.
+                                    ((path_sysop(newerthan, OUTP, INP),
+                                    path_sysop(size, OUTP, [X, Y]),
+                                    (Y > EMPTYFILE;
+                                    X > 0)) ->
+                                    otherwise;
+                                    fromppltop(INP, OUTP, T, N)),
+% If already compliled to Prolog.
+                                    ((path_sysop(newerthan, MODCODE, INP),
+                                    path_sysop(size, OUTP, [X, Y]),
+                                    (Y > EMPTYFILE;
+                                    X > 0)) ->
+                                    otherwise;
+                                    atom_concat(BASE, '.xwam', CODE),
+                                    ac(['-D MODNAME=', MOD], PAR),
+                                    retract(xpp_options(OLDXPP)),
+                                    asserta(xpp_options(PAR)),
+                                    compile(OUTP, [xpp_on, xpp_dump]),
+                                    retract(xpp_options(PAR)),
+                                    asserta(xpp_options(OLDXPP)),
+                                    tryrm(MODCODE, ''),
+                                    path_sysop(rename, CODE, MODCODE)),
+% Reset system if needed.
+                                    (T == reset ->
+                                    resetsystem(MOD);
+                                    otherwise),
+% Consult the result.
+                                    consult(MODCODE).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% fromppltop/4 (+ file input name, + file output name, + is library flag,
+% + file printed name)
+% This predicate compiles pathlp file to prolog one.
+
+fromppltop(INP, OUTP, T, N) :- retractall(comp(_)),
+                               open(OUTP, write, FO),
+                               mywriteln(['[PathLP: compiling ', N, ']']),
+% Create temporary file for unified Prolog part.
+                               (T == library ->
+                               otherwise;
+                               getconfig(tempdir, DIR),
+                               findname(DIR, TMPNAME),
+                               open(TMPNAME, write, TMPW),
+                               writeln(TMPW, '#include "lib/main.lpb"'),
+                               close(TMPW),
+                               xpp_process_file(TMPNAME, PROC1, FO),
+                               shell:process_control(PROC1, wait(EXITCODE1)),
+                               EXITCODE1 = 0,
+                               setconfig(linenumber, 0)),
+% Preprocess the input.
+                               xpp_process_file(INP, PROC2, FI),
+                               shell:process_control(PROC2, wait(EXITCODE2)),
+                               (EXITCODE2 = 0 ->
+                               otherwise;
+                               throwerr('Preprocessor error')),
+                               (T == library ->
+                               otherwise;
+                               path_sysop(rm, TMPNAME)),
+                               !,
+% Main fail loop.
+                               repeat,
+                               \+ pathlploop(file, FI, FO),
+                               !,
+% Try to abolish.
+                               need_abolish(P),
+                               write(FO, P),
+                               close(FI),
+                               close(FO),
+                               !,
+% Erase the output if there were errors.
+                               (comp(_) ->
+                               (retractall(comp(_)),
+                               path_sysop(rm, OUTP),
+                               fail);
+                               getconfig(linenumber, L),
+                               (L = 1 ->
+                               NAME = ' line]';
+                               NAME = ' lines]'),
+                               mywriteln(['[PathLP: file ', N, ' has ', L, NAME])).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% resetsystem/0
+% This predicate prepares empty dynamic space and sets equality and typing
+% configurations to default one.
+
+resetsystem :- getconfig(allmodules, MODULES),
+               forall(member(MOD / _ / _, MODULES),
+               resetsystem(MOD)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% resetsystem/1 (+ module name)
+% This predicate prepares empty dynamic module and sets equality and typing
+% configuration to default one for specific module.
+
+resetsystem(MOD) :- myabolish(MOD),
+                    setconfig(MOD, equality, empty),
+                    setconfig(MOD, typing, inference),
+                    forall(member(PRED/PARAM, ['PREFIX q_equal '/2,
+                    'PREFIX q_membership '/2, 'PREFIX q_subclass '/2,
+                    'PREFIX q_property '/3, 'PREFIX q_type '/5,
+                    'PREFIX q_constraint '/4, 'PREFIX fact_q_equal '/2,
+                    'PREFIX fact_q_membership '/2, 'PREFIX fact_q_subclass '/2,
+                    'PREFIX fact_q_property '/3, 'PREFIX fact_q_type '/5]),
+                    (atom_concat(PRED, MOD, FULLPRED),
+                    functor(REMOVED, FULLPRED, PARAM),
+                    myretractall(usermod:REMOVED))),
+                    bgt(MOD).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% myretractall/1 (+ predicate)
+% Replaces the built in retractall.
+
+myretractall(X) :- retract(X),
+                   fail.
+myretractall(_).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% takefile/1 (+ file name)
+% This predicate takes a whole file from standard input.
+
+takefile(FILE) :- open(FILE, write, F),
+                  !,
+                  repeat,
+                  \+ (write('> '),
+                  file_read_line_atom(0, LINE),
+                  write(F, LINE)),
+                  !,
+                  nl,
+                  close(F).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 7 Error handler.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part handles errors in the program.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% errorfalsehandler/1 (+ error)
+% This predicate handles a runtime error and fails.
+
+errorfalsehandler(E) :- errorhandler(E),
+                        fail.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% errorhandler/1 (+ error)
+% This predicate handles a runtime error.
+
+errorhandler(E) :- E = error(_, _, _),
+                   !,
+                   catch(errorhandle(E), ERR,
+                   (write('FATAL ERROR: '),
+                   handle(ERR),
+                   gc(halt(1)))).
+errorhandler(E) :- errorhandler(error(runtime_error(E), [], _)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% err/1 (+ message)
+% This predicate handles a compilation error.
+
+err(MESSAGE) :- pln,
+                writeln(2, MESSAGE),
+                asserta(comp(_)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pln/0
+% This predicate prints a line number for compilation error.
+
+pln :- getconfig(linenumber, L),
+       write(2, 'Line '),
+       write(2, L),
+       write(2, ': '),
+       !.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% throwerr/1 (+ message)
+% This predicate creates a runtime error with one argument.
+
+throwerr(E) :- throwerr(E, []).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% throwerr/2 (+ message, + parameter)
+% This predicate creates a runtime error with two arguments.
+
+throwerr(E, R) :- throw(error(runtime_error(E), R, _)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% errorhandle/1 (+ error)
+% This predicate handles a runtime error without "error in error" afraid.
+
+% Close open file streams.
+errorhandle(E) :- setconfig(runmode, query),
+                  setdepth('table depth'),
+                  close_open_files(7),
+% Close query negative stream.
+                  %TODOclose(-2),
+% Close open tables.
+                  machine:close_open_tables(E),
+% Reset stdin temporary file name.
+% Clear asserted memory.
+                  retrall,
+% Print a message.
+                  once(handle(E)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% close_open_files/1 (+ stream number)
+% This predicate closes all opened files.
+
+% Try to close argument stream. If succeeded - call the next.
+close_open_files(X) :- stream_property(X, _),
+                       close(X),
+                       Y is X + 1,
+                       close_open_files(Y).
+close_open_files(_).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% handle/1 (+ error)
+% This predicate prints runtime error message.
+
+handle(error(A, B, Q)) :- signerr(B, ' (', L),
+                          signerr(B, ')', R),
+                          signerr(B, B, C),
+                          err(A, C, L, R, Y),
+                          standard:messageln(Y, 2),
+% Print stack backtracking if needed.
+                          (getconfig(tracing, trace) ->
+                          error_handler:print_backtrace(Q);
+                          otherwise),
+                          (stop_tests(_, _);
+                          otherwise).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% signerr/3 (+ error parameter, + default, - result)
+% This predicate helps to create an error message according to error parameter
+% existence.
+
+signerr(B, T, BS) :- B == [] ->
+                     BS = '';
+                     BS = T.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% err/5 (+ error, + parameter, + left parenthesis, + right parenthesis,
+% - message)
+% This predicate creates an error message, according to an error type.
+
+% PathLP error.
+err(runtime_error(E), M, L, R,
+                      ('RUNTIME ERROR: ', E, L, MM, R)) :- term_to_atom(M, MM).
+% XSB errors. 
+err(domain_error(V, C), M, L, R,
+                      ('DOMAIN ERROR: ', C, ' not in domain ', V, L, M, R)).
+err(evaluation_error(F), M, L, R,
+                      ('EVALUATION ERROR: ', F, L, M, R)).
+err(existence_error(O, C), M, L, R,
+                      ('EXISTENCE ERROR: No ', O, ' ', C, ' exists', L, M, R)).
+err(instantiation_error, M, L, R,
+                      ('INSTANTIATION ERROR', L, M, R)).
+err(misc_error, M, L, R,
+                      ('MISCELLANEOUS ERROR', L, M, R)).
+err(preprocessing_error, M, L, R,
+                      ('PREPROCESSING ERROR', L, M, R)).
+err(permission_error(O, T, C), M, L, R, E) :- C == '' ->
+                      E = ('PERMISSION ERROR: ', O,' on ', T, L, M, R);
+                      E = ('PERMISSION ERROR: ', O,' on ', T, ': ', C, L, M, R).
+err(representation_error(R, C), M, L, R,
+                      ('REPRESENTATION ERROR: ', C, ' is not ', R, L, M, R)).
+err(resource_error(F), M, L, R,
+                      ('RESOURCE ERROR: ', F, L, M, R)).
+err(syntax_error_1(C), M, L, R,
+                      ('SYNTAX ERROR: ', CC, L, M, R)) :-
+                      C = [_|_] ->
+                      term_to_atom(C, CC);
+                      C = CC.
+err(syntax_error, M, L, R,
+                      ('SYNTAX ERROR', L, M, R)).
+err(system_error, M, L, R,
+                      ('SYSTEM ERROR', L, M, R)).
+err(table_error, M, L, R,
+                      ('TABLING ERROR', L, MM, R)) :- removeprefix(M, MM).
+err(typed_table_error(T), M, L, R,
+                      ('TABLING ERROR: ', T, L, MM, R)) :- removeprefix(M, MM).
+err(type_error(V, C), M, L, R,
+                      ('TYPE ERROR: ', C, ' in place of ', V, L, M, R)).
+err(unrecoverable_error, M, L, R,
+                      ('FATAL ERROR', L, M, R)).
+% Unrecognizable error.
+err(E, M, L, R, (E, L, M, R)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% removeprefix/2 (+ prolog message, - clean prolog message)
+% This predicate removes inner predicate names from tabling error message.
+
+removeprefix(M, MM) :- atom_codes(M, MSTR),
+                       atom_codes('PREFIX', PREFSTR),
+                       append(MMSTR, MSUF, MSTR),
+                       append(PREFSTR, _, MSUF),
+                       !,
+                       append(MMFULL, [_, _], MMSTR),
+                       atom_codes(MM, MMFULL).
+removeprefix(M, M).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 8 Configuration.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part treats program configuration.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% setconfig/2 (+ variable, + value)
+% This predicate sets configuration variable.
+
+setconfig(VAR, VALUE) :- member(VAR, [equality, typing]),
+                         !,
+                         getconfig(module, MOD),
+                         setconfig(MOD, VAR, VALUE).
+setconfig(VAR, VALUE) :- retract(plpconf(CONF)),
+                         basics:select({VAR, _}, CONF, NEWCONF),
+                         asserta(plpconf([{VAR, VALUE}|NEWCONF])).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% setconfig/3 (+ module name, + variable, + value)
+% This predicate sets configuration variable of equality or typing.
+
+setconfig(MOD, VAR, VALUE) :- 
+                retract(plpconf(CONF)),
+                basics:select({allmodules, LIST}, CONF, NEWCONF),
+                basics:select(MOD / EQ / TY, LIST, NEWLIST),
+                (VAR = equality ->
+                RES = MOD / VALUE / TY,
+                OLDVALUE = EQ;
+                RES = MOD / EQ / VALUE,
+                OLDVALUE = TY),
+                asserta(plpconf([{allmodules, [RES|NEWLIST]}|NEWCONF])),
+% Abolish language tables if needed.
+                (OLDVALUE \= VALUE ->
+                'PREFIX abolish'(MOD);
+                otherwise).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% getconfig/2 (+ variable, - value)
+% This predicate gets configuration variable value.
+
+getconfig(VAR, VALUE) :- member(VAR, [equality, typing]),
+                 !,
+                 getconfig(allmodules, LIST),
+                 getconfig(module, MOD),
+                 member(MOD / EQ / TY, LIST),
+                 (VAR = equality ->
+                 VALUE = EQ;
+                 VALUE = TY).
+getconfig(VAR, VALUE) :- plpconf(CONF),
+                 member({VAR, VALUE}, CONF).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% getconfig/2 (+ module name, + variable, - value)
+% This predicate gets configuration variable value of equality or typing.
+
+getconfig(MOD, VAR, VALUE) :- member(VAR, [equality, typing]),
+                 !,
+                 getconfig(allmodules, LIST),
+                 member(MOD / EQ / TY, LIST),
+                 (VAR = equality ->
+                 VALUE = EQ;
+                 VALUE = TY).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% setconfig/4 (+ variable, ? value, + default option, + another option)
+% This predicate tries to set configuration variable.
+
+% If value is variable, call to getter.
+setconfig(VAR, VALUE, YES, NO) :- var(VALUE),
+                        !,
+                        getconfig(VAR, VALUE);
+% If one of two possibilities, set it.
+                        member(VALUE, [YES, NO]),
+                        !,
+                        setconfig(VAR, VALUE);
+% Set default option.
+                        VALUE = d,
+                        !,
+                        setconfig(VAR, YES),
+                        printstate([{VAR, YES}]);
+% Unknown value.
+                        pwrite(['The options of ', VAR,' are ', YES]),
+                        mywriteln([', ', NO, '.']),
+                        fail.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% printstate/1 (+ configuration variable and value pairs list)
+% This predicate prints system configuration pairs.
+
+printstate([]).
+printstate([{A, B}|C]) :- mywriteln([A = B]),
+                  printstate(C).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 9 Service part.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part includes service predicates.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ac/2 (+ atoms list, - atom)
+% This predicate recursively concatenates atoms list to single one.
+
+ac([], '').
+ac([A|B], ANS) :- ac(B, ANSB),
+            atom_concat(A, ANSB, ANS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% gensym/2 (+ string prefix, - original string)
+% This predicate generates a new unused symbol with given prefix.
+
+gensym(X, Y) :- getconfig(gensym, Z),
+            NEW is Z + 1,
+            setconfig(gensym, NEW),
+            term_to_atom(Z, ZZ),
+            atom_concat(X, ZZ, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% trystable/0
+% This predicate checks system stability if needed.
+
+trystable :- getconfig(allmodules, MODULES),
+         forall(member(MOD / _ / _, MODULES),
+         trystable(MOD)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% trystable/1 (+ module name)
+% This predicate checks system stability in particular module if needed.
+
+trystable(X) :- getconfig(stability, automatic) ->
+            gc(stable(X));
+            otherwise.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% sect/2 (+ input line, - output line)
+% This predicate removes any end of line symbols from the input,
+% This order works in every OS.
+
+sect(LINE, INPUT) :- (append(MID, "\n", LINE) ->
+               otherwise;
+               MID = LINE),
+               (append(INPUT, "\r", MID) ->
+               otherwise;
+               INPUT = MID).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% tryrm/2 (+ file name, + file extension)
+% This predicate tries to delete a file and always succeeds.
+
+tryrm(NAME, EXT) :- atom_concat(NAME, EXT, FULLNAME),
+              (path_sysop(rm, FULLNAME);
+              otherwise).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% takestr/2 (+ predicate name branch, - predicate name)
+% This predicate removes p prefix, if any.
+
+takestr(X, Y) :- X = p(Y) ->
+             otherwise;
+             X = Y.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% need_abolish/1 (- code)
+% This predicate creates abolishing code, if database grew up.
+
+need_abolish(P) :- getconfig(database, new) ->
+             P = ':- ''PREFIX abolish''(MODNAME).\n',
+             setconfig(database, same);
+             P = ''.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% printans/2 (+ variables list, + 3-valued logic result)
+% This predicate prints query answer.
+
+printans([X|Y], REGVAL) :- nl,
+                   (REGVAL == true ->
+                   write('Answer:');
+                   write('Undefined answer:')),
+                   printvars([X|Y]).
+% Empty variables list.
+printans([], REGVAL) :- writeln(REGVAL).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% writevar/1 (+ variable value)
+% This predicate prints variable value, adding question mark if ungrounded.
+
+writevar(VALUE) :- (var(VALUE) -> 
+             write(?);
+             otherwise),
+             write(VALUE).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% printvars/1 (+ variables list)
+% This predicate prints recursively variable and its value pairs.
+
+printvars([var(NAME, VALUE)|Y]) :- printvars(Y),
+                         nl,
+                         pwrite(['?', NAME,' = ']),
+                         writevar(VALUE).
+printvars([]).
+
+% This part concludes language predicates.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pwrite/1 (+ text pieces list)
+% This predicate prints its input in given order from argument list.
+
+pwrite([]).
+pwrite([X|Y]) :- write(X),
+             pwrite(Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% setdepth/1 (+ depth flag name)
+% This predicate sets calculation and table depth.
+
+setdepth(FLAG) :- getconfig(FLAG, VAL),
+                  VAL = [[answer, AVAL, AACT],
+%                        [list, LVAL, LACT],
+                         [subgoal, SVAL, SACT]],
+                  forall(member([PLPFLAG, XSBFLAG],
+                                 [[AVAL, max_table_answer_size],
+                                 [AACT, max_table_answer_size_action],
+%                                [LVAL, max_table_answer_list_depth],
+%                                [LACT, max_table_answer_list_action],
+                                 [SVAL, max_table_subgoal_size],
+                                 [SACT, max_table_subgoal_size_action]]),
+                        set_prolog_flag(XSBFLAG, PLPFLAG)).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 10 Dynamic modules.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% createmodule/1 (+ module name)
+% This predicate creates new module connections.
+
+createmodule(MOD) :- ac(['PREFIX q_constraint ', MOD], CLAUSE1),
+               assert(('PREFIX q_constraint'(MOD, X, Y, Z, T) :-
+                    call(CLAUSE1, X, Y, Z, T))),
+               ac(['PREFIX fact_q_equal ', MOD], CLAUSE2F),
+               ac(['PREFIX q_equal ', MOD], CLAUSE2),
+               assert(('PREFIX q_equal'(MOD, X, Y) :-
+                    (call(CLAUSE2F, X, Y);
+                    call(CLAUSE2, X, Y)))),
+               ac(['PREFIX fact_q_membership ', MOD], CLAUSE3F),
+               ac(['PREFIX q_membership ', MOD], CLAUSE3),
+               assert(('PREFIX q_membership'(MOD, X, Y) :-
+                    (call(CLAUSE3F, X, Y);
+                    call(CLAUSE3, X, Y)))),
+               ac(['PREFIX fact_q_property ', MOD], CLAUSE4F),
+               ac(['PREFIX q_property ', MOD], CLAUSE4),
+               assert(('PREFIX q_property'(MOD, X, Y, Z) :-
+                    (call(CLAUSE4F, X, Y, Z);
+                    call(CLAUSE4, X, Y, Z)))),
+               ac(['PREFIX fact_q_subclass ', MOD], CLAUSE5F),
+               ac(['PREFIX q_subclass ', MOD], CLAUSE5),
+               assert(('PREFIX q_subclass'(MOD, X, Y) :-
+                    (call(CLAUSE5F, X, Y);
+                    call(CLAUSE5, X, Y)))),
+               ac(['PREFIX fact_q_type ', MOD], CLAUSE6F),
+               ac(['PREFIX q_type ', MOD], CLAUSE6),
+               assert(('PREFIX q_type'(MOD, X, Y, Z, T, U) :-
+                    (call(CLAUSE6F, X, Y, Z, T, U);
+                    call(CLAUSE6, X, Y, Z, T, U)))),
+               ac(['-D MODNAME=', MOD], PAR),
+               retract(xpp_options(OLDXPP)),
+               asserta(xpp_options(PAR)),
+               getconfig(pathlpdir, DIR),
+               ac([DIR, '/lib/', mulguard], SPEC),
+               compile(SPEC, [xpp_on, xpp_dump]),
+               atom_concat(SPEC, '.P_gpp', GPP),
+               path_sysop(tmpfilename, TMPFILE),
+               atom_concat(TMPFILE, '.P', TMPPFILE),
+               path_sysop(copy, GPP, TMPPFILE),
+               [TMPPFILE],
+               retract(xpp_options(PAR)),
+               asserta(xpp_options(OLDXPP)).
+
+%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bgt/1 (+ module name)
+% This predicate loads background theories to some dynamic module.
+
+bgt(MOD) :- getconfig(pathlpdir, DIR),
+        ac([DIR, '/src/backgt/backgt.ppl'], BACKGT),
+%        ac([DIR, '/src/backgt/graph.ppl'], PATH),
+        load(BACKGT, MOD, saved).
+%        load(PATH, MOD, saved).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkmodule/1 (+ module name)
+% This predicate checks if module exists.
+
+checkmodule(MOD) :- var(MOD),
+              !,
+              throwerr('Variable module name').
+checkmodule(MOD) :- getconfig(allmodules, MODULES),
+              \+ member(MOD / _ / _, MODULES),
+              !,
+              throwerr('Wrong module name', MOD).
+checkmodule(_).
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% 11 System stability.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% This part executes system stability check.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-stable/1 (? modname)
+% This predicate executes system stability check.
+% If module name bounded, it done in particular module only.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% retstable/1 (- boolean result)
+% This predicate executes system stability check for all the modules.
+
+retstable(ANS) :- getconfig(allmodules, LIST),
+            forall(member(MOD / _ / _, LIST),
+            makestable(MOD)),
+            stopstable(ANS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dostable/1 (+ modname)
+% This predicate executes system stability check for some module.
+
+dostable(MOD) :- makestable(MOD),
+                 stopstable(_).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% makestable/1 (+ modname)
+% This predicate executes system stability check main part for some module.
+
+makestable(MOD) :- setconfig(runmode, stability),
+                   setdepth('stability table depth'),
+                   checkmodule(MOD),
+                   checkconstrs(MOD),
+                   checktypes(MOD).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% makestableone/2 (+ constraint name, - answer)
+% This predicate executes system stability check part for one constraint.
+
+makestableone(CONSTR, ANS) :- setconfig(runmode, stability),
+                              setdepth('stability table depth'),
+                              'PREFIX is_q_constraint'(MOD, X, Y, INPUT, CONSTR),
+                              (checkconstraintone(MOD, X, Y, INPUT);
+                              otherwise),
+                              setconfig(runmode, query),
+                              setdepth('table depth'),
+                              retractall(unstable(_, _)),
+                              (unstable([_, _, M]) ->
+                              otherwise;
+                              M = true),
+                              member((ANSWER, REGVAL), M),
+                              takeconstr(ANSWER, ANS),
+                              REGVAL,
+                              retractall(unstable(_)).
+
+% TODO
+takeconstr([], []).
+takeconstr([var(_, A)|REST], ANS) :- takeconstr(REST, ELSE),
+                                     append(ELSE, [A], ANS).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkconstraintone/4 (+ module name, + constraint, + ungrounded variables list,
+% + constraint code)
+% This predicate checks one constraint for stable/2.
+
+% Fail loop - reason the query.
+checkconstraintone(MOD, X, Y, INPUT) :-
+                    call_tv(X, REGVAL),
+% If we're here, there is a problem.
+                    (retract(unstable([MOD, INPUT, LIST])) ->
+                    (member((Y, REGVAL), LIST) ->
+                    asserta(unstable([MOD, INPUT, LIST]));
+                    asserta(unstable([MOD, INPUT, [(Y, REGVAL)|LIST]])));
+% First problem at this constraint.
+                    asserta(unstable([MOD, INPUT, [(Y, REGVAL)]]))),
+                    fail.
+checkconstraint(_, _, _, _).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% stopstable/1 (- boolean result)
+% This predicate finishes system stability check.
+
+stopstable(ANS) :- setconfig(runmode, query),
+                   setdepth('table depth'),
+                   (unstable(_, _) ->
+                   retractall(unstable(_, _)),
+                   writeln('The system stability check finished'),
+                   ANS = false;
+                   ANS = true),
+                     retractall(unstable(_)),
+                   (\+ ANS,
+                   getconfig(testing, E / T) ->
+                   EE is E + 1,
+                   setconfig(testing, EE / T);
+                   otherwise).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkconstrs/1 (+ modname)
+% This predicate checks the constraints in particular module.
+
+% Fail loop - find next constraint and check it.
+% unstable/1 saves the constraint and results list pair.
+checkconstrs(MOD) :- 'PREFIX is_q_constraint'(MOD, X, Y, INPUT, _TEXT),
+               checkconstraint(MOD, X, Y, INPUT),
+               fail.
+checkconstrs(_) :- retractall(unstable(_)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkconstraint/4 (+ module name, + constraint, + ungrounded variables list,
+% + constraint code)
+% This predicate checks one constraint.
+
+% Fail loop - reason the query.
+checkconstraint(MOD, X, Y, INPUT) :-
+                    call_tv(X, REGVAL),
+% If we're here, there is a problem.
+                    printstable,
+                    (retract(unstable([MOD, INPUT, LIST])) ->
+                    (member((Y, REGVAL), LIST) ->
+                    asserta(unstable([MOD, INPUT, LIST]));
+                    asserta(unstable([MOD, INPUT, [(Y, REGVAL)|LIST]])),
+                    printans(Y, REGVAL),
+                    nl);
+% First problem at this constraint.
+                    asserta(unstable([MOD, INPUT, [(Y, REGVAL)]])),
+                    nl,
+                    write('In module '),
+                    write(MOD),
+                    writeln(' the constraint:'),
+                    writeln(INPUT),
+                    writeln('is not satisfied for:'),
+                    printans(Y, REGVAL),
+                    nl),
+                    fail.
+checkconstraint(_, _, _, _).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% printstable/0
+% This predicate prints a message on first system problem.
+
+printstable :- unstable(_, _) ->
+           otherwise;
+           nl,
+           writeln('The system is unstable:'),
+           assert(unstable(_, _)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checktypes/1 (+ module name)
+% This predicate checks type path expression cardinality constraints
+% in particular module.
+
+% Fail loop - find next cardinality constraint and check it, if needed.
+checktypes(MOD) :- 'PREFIX is_q_type'(MOD, XC, Y, ZC, MIN, MAX),
+             once((MIN \= 0;
+             MAX \= * )),
+% Find all object path expressions accordant sources.
+             findall(X, 'PREFIX is_q_membership'(MOD, X, XC), LIST),
+             sort(LIST, SORTED),
+             forall(member(OBJ, SORTED),
+             checkonetype(MOD, OBJ, Y, ZC, MIN, MAX, XC)),
+             fail.
+checktypes(_) :- retractall(unstable(_)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkonetype/7 (+ module name, ? property source, ? property name,
+% ? property target class, ? minor, ? major, ? property source class)
+% This predicate checks one cardinality constraint.
+
+checkonetype(MOD, X, Y, ZC, U, V, XC) :-
+% Find all edges.
+                 findall((X, Y, Z, ZC), findtype(MOD, X, Y, Z, ZC), LIST),
+                 sort(LIST, SORTED),
+                 length(SORTED, LENGTH),
+                 (((U \= 0,
+                 'PREFIX is_q_compare'(MOD, less, LENGTH, U));
+                 (V \= * ,
+                 'PREFIX is_q_compare'(MOD, less, V, LENGTH))) ->
+% Check if there is a limits deviation.
+                 printstable,
+                 printconstr(MOD, XC, Y, ZC, U, V, X);
+                 otherwise).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findtype/5 (+ module name, ? property source, ? property name,
+% - property target, ? property target class)
+% This predicate finds non variable object path expressions for cardinality
+% check.
+
+findtype(MOD, X, Y, Z, ZC) :- 'PREFIX is_q_property'(MOD, X, Y, Z),
+                    'PREFIX is_q_membership'(MOD, Z, ZC),
+                    nonvar(X),
+                    nonvar(Y),
+                    nonvar(Z),
+                    nonvar(ZC).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% printconstr/7 (+ module name, + property source class, + property name,
+% + property target class, + minor, + major, + property source)
+% This predicate prints cardinality checks problems.
+
+% unstable/1 saves five first arguments and list of the sixth.
+printconstr(MOD, X, Y, Z, U, V, ANS) :-
+                    retract(unstable([MOD, X, Y, Z, U, V, LIST])) ->
+                    (member(ANS, LIST) ->
+                    asserta(unstable([MOD, X, Y, Z, U, V, LIST]));
+                    asserta(unstable([MOD, X, Y, Z, U, V, [ANS|LIST]])),
+                    mywriteln(['Object ', ANS]));
+% First problem at this constraint.
+                    asserta(unstable([MOD, X, Y, Z, U, V, [ANS]])),
+                    nl,
+                    write('In module '),
+                    write(MOD),
+                    writeln(' the type cardinality constraint'),
+                    writevar(X),
+                    write('!'),
+                    writevar(Y),
+                    write('['),
+                    writevar(Z),
+                    write(']{'),
+                    writevar(U),
+                    write('..'),
+                    writevar(V),
+                    writeln('};'),
+                    writeln('is not satisfied for: '),
+                    mywriteln(['Object ', ANS]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO
+/*
+:- export creategraph/1, addnode/2, removenode/2, addedge/4, removeedge/2, removegraph/1, graph/1, graphnode/2, graphedge/4.
+:- dynamic graph/1, graphnode/2, graphedge/4 as incremental.
+:- index(graph/1, trie).
+:- index(graphnode/2, trie).
+:- index(graphedge/4, trie).
+
+% creategraph/1
+creategraph(Graph) :- var(Graph),
+                      throwerr('Variable graph name').
+creategraph(Graph) :- graph(Graph),
+                      throwerr('Graph exists ', Graph).
+creategraph(Graph) :- incr_assert_inval(graph(Graph)).
+creategraph(Graph).
+
+% addnode/2
+addnode(_,     Node) :- var(Node),
+                        throwerr('Variable node name').
+addnode(Graph, Node) :- graphexists(Graph),
+                        graphnode(Graph, Node),
+                        !.
+addnode(Graph, Node) :- incr_assert_inval(graphnode(Graph, Node)), incr_table_update.
+
+% removenode/2
+removenode(_    , Node) :- var(Node),
+                           throwerr('Variable node name').
+removenode(Graph, Node) :- graphexists(Graph),
+                           graphnode(Graph, Node),
+                           incr_retract(graphnode(Graph, Node)).
+removenode(_    , _   ).
+
+% addedge/4
+addedge(_,     _,    Source, _     ) :- var(Source),
+                                        throwerr('Variable source name').
+addedge(_,     _,    _,      Target) :- var(Target),
+                                        throwerr('Variable target name').
+addedge(Graph, Edge, _,      _     ) :- graphexists(Graph),
+                                        nonvar(Edge),
+                                        graphedge(Graph, SomeEdge, _, _),
+                                        Edge == SomeEdge,
+                                        throwerr('Edge exists', Edge).
+addedge(Graph, Edge, Source, Target) :- incr_assert_inval(graphedge(Graph, Edge, Source, Target)).
+
+% removeedge/2
+removeedge(_,     Edge) :- var(Edge),
+                           throwerr('Variable edge name').
+removeedge(Graph, Edge) :- graphexists(Graph),
+                           graphedge(Graph, SomeEdge, _, _),
+                           Edge == SomeEdge,
+                           incr_retract(graphedge(Graph, Edge, _, _)),
+                           !.
+removeedge(_,     Edge) :- throwerr('No such edge', Edge).
+
+% removegraph/1
+removegraph(Graph) :- graphexists(Graph),
+                      incr_retractall(graphnode(Graph, _)),
+                      incr_retractall(graphedge(Graph, _, _, _)),
+                      incr_retract(graph(Graph)).
+
+graphexists(Graph) :- var(Graph),
+                      throwerr('Variable graph name').
+graphexists(Graph) :- graph(Graph),
+                      !.
+graphexists(Graph) :- throwerr('No such graph ', Graph).
+*/

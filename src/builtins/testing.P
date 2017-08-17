@@ -1,0 +1,204 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the testing builtins file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% testing/1
+% This predicate turns on and off the testing system
+
+bin(testing(X)) :- setconfig(testing, X, work, debug).
+
+% test/0
+% This predicate tests all the system.
+
+bin(test) :- bin(test(_)).
+
+% test/1
+% This predicate tests parameter module.
+
+bin(test(Mod)) :- !,
+            getconfig(testing, Testing),
+            (Testing = work ->
+            writeln(2, 'The testing is off'),
+            fail;
+            otherwise),
+            (Testing = _ / _ ->
+            throwerr('Double testing');
+            otherwise),
+            (var(Mod) ->
+            otherwise;
+            checkmodule(Mod)),
+            setconfig(testing, 0 / 0),
+            forall(('PREFIX is_q_untproperty'(Mod, Test, Ans, Guard),
+                      nonvar(Ans),
+                      Ans = answer(Varsnum)),
+                (next_test(Mod, Test, Varsnum, Guard))),
+/*            (getconfig(stability, automatic) ->
+            otherwise;
+            bin(stable(Mod))),TODO*/
+            stop_tests(Mod, Ans),
+            (var(Mod) ->
+            Ans = Mod;
+            otherwise).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% next_test/4 (? module name, + test name, + variables number,
+% + test expected answer)
+% This predicate executes one test and takes care on errors.
+
+next_test(_, Test, _, _) :- 'PREFIX is_q_untproperty'(_, Test, cancel, true),
+                            !.
+next_test(Mod, Test, Varsnum, Guard) :- getconfig(testing, E0 / T0),
+                            TT0 is T0 + 1,
+                            setconfig(testing, E0 / TT0),
+                            getconfig(timeout, Time),
+                              (Time == '*' ->
+                            prepare_test(Mod, Test, Varsnum, Guard);
+                            Timeout is round(Time * 1000),
+                            catch(timed_call(prepare_test(Mod,
+                              Test, Varsnum, Guard), [max(Timeout,
+                              throw('Time limit exceeded')), nesting]),
+                              Error,
+                              (getconfig(testing, E / T),
+                              EE is E + 1,
+                              setconfig(testing, EE / T),
+                              write('Test failed: '),
+                              writeln(Test),
+                              write('Test error: '),
+                              throw(Error)))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prepare_test/4 (? module name, + test name, + variables number,
+% + test expected answer)
+% This predicate prepares one test.
+
+prepare_test(Mod, Test, Varsnum, Guard) :- length(Vars, Varsnum),
+                             ((nonvar(Guard),
+                             Guard = True / Und) ->
+                             (msort(True, Sortedtrue),
+                             msort(Und, Sortedund),
+                             make_test(Mod, Test, Vars,
+                                 Sortedtrue, Sortedund));
+                             (\+ \+ append(Guard, [], _) ->
+                             msort(Guard, Answer);
+                             Guard = Answer),
+                             make_test(Mod, Test, Vars, Answer)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% make_test/4 (? module name, + test name, + variables number,
+% + test expected answers list)
+% This predicate evaluates one test.
+
+% Only regval.
+make_test(Mod, Test, [], Regval) :- !,
+                        (call_tv('PREFIX is_q_untproperty'(Mod,
+                            Test, call, _), Newregval) ->
+                        otherwise;
+                        Newregval = false),
+                        (Regval = Newregval ->
+                        otherwise;
+                        test_error(Test, Regval, Newregval)).
+% Answer list without regval separation, sublisting.
+make_test(Mod, Test, Vars, in(Answer)) :- findall(Vars,
+                            'PREFIX is_q_untproperty'(Mod, Test, call, Vars), List),
+                          msort(List, Sorted),
+                          ((Sorted = [_|_],
+                          sublist(Sorted, Answer)) ->
+                          otherwise;
+                          test_error(Test, in(Answer), Sorted)).
+% Answer list without regval separation, sublisting membership.
+make_test(Mod, Test, Vars, one(Answer)) :- findall(Vars,
+                            'PREFIX is_q_untproperty'(Mod, Test, call, Vars), List),
+                          msort(List, Sorted),
+                          ((Sorted = [_],
+                          sublist(Sorted, Answer)) ->
+                          otherwise;
+                          test_error(Test, one(Answer), Sorted)).
+% Answer list without regval separation.
+make_test(Mod, Test, Vars, Answer) :- findall(Vars,
+                            'PREFIX is_q_untproperty'(Mod, Test, call, Vars), List),
+                          msort(List, Sorted),
+                          (Sorted == Answer ->
+                          otherwise;
+                          test_error(Test, Answer, Sorted)).
+
+sublist([], []).
+sublist([X|A], [Y|B]) :- X == Y,
+                         !,
+                         sublist(A, B).
+sublist(A, [_|B]) :- sublist(A, B).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% make_test/5 (? module name, + test name, + variables number,
+% + test expected answers list for true,
+% + test expected answers list for undefined)
+% This predicate evaluates one test with separated regval.
+
+make_test(Mod, Test, Vars, True, Und) :-
+                  findall((Regval, Vars),
+                  call_tv('PREFIX is_q_untproperty'(Mod, Test, call, Vars),
+                      Regval), Fulllist),
+                  separate_test(Fulllist, Truelist, Undlist),
+                  msort(Truelist, Sortedtrue),
+                  msort(Undlist, Sortedund),
+                  (Sortedtrue == True ->
+                  otherwise;
+                  test_error(true(Test), True, Sortedtrue)),
+                  (Sortedund == Und ->
+                  otherwise;
+                  test_error(undefined(Test), Und, Sortedund)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% separate_test/3 (+ answers amd regvals list, - true answers,
+% undefined answers)
+% This predicate separates answers for different regvals.
+
+separate_test([], [], []).
+separate_test([(true, Answer)|Rest], [Answer|True], Und) :-
+                                 separate_test(Rest, True, Und).
+separate_test([(undefined, Answer)|Rest], True, [Answer|Und]) :-
+                                 separate_test(Rest, True, Und).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% test_error/3 (+ test name, + expected answer, + calculated answer)
+% This predicate prints a message about failed test.
+
+test_error(Test, Expected, Answer) :- getconfig(testing, E / T),
+                          EE is E + 1,
+                          setconfig(testing, EE / T),
+                          write('Test failed:'),
+                          writeln(Test),
+                          write('Expected:   '),
+                          writeln(Expected),
+                          write('Calculated: '),
+                          writeln(Answer),
+                          nl.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% stop_tests/2 (? module name, - tests success boolean answer)
+% This predicate finishes the testing process.
+
+stop_tests(Mod, Ans) :- getconfig(testing, E / T),
+                setconfig(testing, debug),
+                pwrite([T, ' tests, ', E, ' errors']),
+                (var(Mod) ->
+                (E == 0 ->
+                Ans = true;
+                Ans = false);
+                pwrite([' in module ', Mod])),
+                nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% msort/2 (+ list, ? sorted list)
+% This predicate sorts a list.
+
+msort(List, Sorted) :- machine:parsort(List, asc, 0, Sorted).

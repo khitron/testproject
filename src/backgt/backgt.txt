@@ -1,0 +1,73 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the background theories file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Builtins main.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% Subtype implication.
+?x!?y[?z] :- ?z._var[false],
+             ?x!?y[?t],
+             ?t::?z;
+% Typing distributivity polymorhism.
+%?x:?y :- pwriteln([1, ?x, ?y, ?z]), ?z::?y, pwriteln([3, ?x, ?y, ?z]), 
+%         ?x:?z, pwriteln([5, ?x, ?y, ?z]);
+/*
+?x:?y :-  `%writeln([point1, x = ?x, y = ?y, z = ?z]),
+          '_^pathlp_247_ is_q_subclass'(def, ?z, ?y),
+          %writeln([point2, x = ?x, y = ?y, z = ?z]),
+          '_^pathlp_247_ is_q_membership'(def, ?x, ?z)
+          %,writeln([point3, x = ?x, y = ?y, z = ?z]),class_nesting_guard(?x, 3),class_nesting_guard(?y, 3),class_nesting_guard(?z, 3)
+		  `;
+*/
+?x:?y :- ?z::?y,
+         ?x:?z;
+?x:?y :- ?x:?z,
+         ?z::?y;
+		 
+% Typing inference.
+?x:?y :- typing(?kind, MODNAME),
+         ?kind = inference,
+         ?z!?t[?y],
+		 ?z._var[false],
+         ?u:?z,
+         ?u.?t[?x];
+		 
+% Subtyping transitivity.
+
+?x:?y :- ?z::?y,
+         ?x:?z;
+
+?x::?y :- ?x::?z,
+          ?z::?y;
+
+/*
+?x:?y :- %pwriteln([qoint1, x = ?x, y = ?y, z = ?z]),
+         ?z::?y,
+		 ?y.valid[true],
+		 ?z.valid[true],
+         %pwriteln([point2, x = ?x, y = ?y, z = ?z]),
+         ?x:?z,
+		 ?x.valid[true],
+		 ?y.valid[true]
+         %,pwriteln([point3, x = ?x, y = ?y, z = ?z])
+		 ;
+
+?x::?y :- %pwriteln([point4, x = ?x, y = ?y, z = ?z]),
+          ?x::?z,
+		  ?x.valid[true],
+		  ?z.valid[true],
+          %pwriteln([point5, x = ?x, y = ?y, z = ?z]),
+          ?z::?y,
+          %pwriteln([point6, x = ?x, y = ?y, z = ?z]),
+	      ?x.valid[true],
+		  ?y.valid[true];
+*/

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+ <mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+   <mime-type type="application/x-pathlp">  
+   <comment>PathLP Mime type installation</comment>
+   <icon name="pathlp-icon"/>
+   <glob pattern="*.ppl"/>
+  </mime-type>
+ </mime-info>

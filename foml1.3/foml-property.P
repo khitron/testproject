@@ -1,0 +1,43 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+'_^pathlp_247_ q_property MODNAME'((_Vo), (link('OR'(_Vp1, _Vp2, _Vmod))), (_Vo1)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vp1), ('_var'), (false))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vp2), ('_var'), (false))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vp1), ('Property'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vp2), ('Property'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), ('Object'))), ((((fail_if((_Vp1) = (_Vp2)))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (link(_Vp1)), (_Vo1))); ('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (link(_Vp2)), (_Vo1)))))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vo), (link('AND'(_Vp1, _Vp2, _Vmod))), (_Vo1)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vp1), ('_var'), (false))), ((('_^pathlp_247_ is_q_property'(MODNAME, (_Vp2), ('_var'), (false))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vp1), ('Property'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vp2), ('Property'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), ('Object'))), ((((fail_if((_Vp1) = (_Vp2)))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (link(_Vp1)), (_Vo1))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (link(_Vp2)), (_Vo1)))))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vo), (link('NOT'(_Vp, _Vmod))), (_Vo1)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vp), ('_var'), (false))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vp), ('Property'))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vo), ('Object'))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (_Vp1), (_Vo1))), ((('_^pathlp_247_ is_q_membership'(_Vmod, (_Vp1), ('Property'))), (catch(abolish_table_call(tables:tunnumcall(_)), _,
+                            true), sk_not(('_^pathlp_247_ is_q_property'(_Vmod, (_Vo), (_Vp), (_Vo1)))))))))))))).
+'_^pathlp_247_ q_property MODNAME'((_Vc1), (compose(_Vp, _Vp1, _Vmod)), (_Vc3)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vc1), (property(_Vp, _Vmod)), (_Vc2))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vc2), (property(_Vp1, _Vmod)), (_Vc3)))).
+'_^pathlp_247_ q_property MODNAME'((_Vc1), (compose(_Vp, _Vc2, _Vp1, _Vmod)), (_Vc3)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Vc1), (property(_Vp, _Vmod)), (_Vc2))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vc2), (property(_Vp1, _Vmod)), (_Vc3)))).
+'_^pathlp_247_ q_property MODNAME'((_Vx), (closure(_Ve, _Vmod)), (_Vy)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Ve), ('_var'), (false))), ('_^pathlp_247_ is_q_property'(_Vmod, (_Vx), (property(_Ve)), (_Vy)))).
+'_^pathlp_247_ q_property MODNAME'((_Vx), (closure(_Ve, _Vmod)), (_Vy)) :- (('_^pathlp_247_ is_q_property'(MODNAME, (_Ve), ('_var'), (false))), ((('_^pathlp_247_ is_q_property'(_Vmod, (_Vx), (property(_Ve)), (_Vz))), ('_^pathlp_247_ is_q_property'(MODNAME, (_Vz), (closure(_Ve, _Vmod)), (_Vy)))))).
+:- '_^pathlp_247_ abolish'(MODNAME).

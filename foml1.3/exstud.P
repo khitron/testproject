@@ -1,0 +1,44 @@
+% This is main pathlp library.
+% It is included in all compiled files beginning.
+
+% Preprocessor unique prefix definitions.
+
+
+
+% Trie indexing, part 1.
+:- '_^pathlp_247_ index'(1, 'MODNAME').
+
+% Multifile dynamic pure language predicates.
+:- multifile '_^pathlp_247_ q_constraint MODNAME'     /4,
+             '_^pathlp_247_ q_equal MODNAME'          /2,
+             '_^pathlp_247_ q_membership MODNAME'     /2,
+             '_^pathlp_247_ q_property MODNAME'       /3,
+             '_^pathlp_247_ q_subclass MODNAME'       /2,
+             '_^pathlp_247_ q_type MODNAME'           /5,
+             '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+             '_^pathlp_247_ fact_q_membership MODNAME'/2,
+             '_^pathlp_247_ fact_q_property MODNAME'  /3,
+             '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+             '_^pathlp_247_ fact_q_type MODNAME'      /5.
+:- dynamic '_^pathlp_247_ q_constraint MODNAME'/4,
+           '_^pathlp_247_ q_equal MODNAME'     /2, '_^pathlp_247_ fact_q_equal MODNAME'     /2,
+           '_^pathlp_247_ q_membership MODNAME'/2, '_^pathlp_247_ fact_q_membership MODNAME'/2,
+           '_^pathlp_247_ q_property MODNAME'  /3, '_^pathlp_247_ fact_q_property MODNAME'  /3,
+           '_^pathlp_247_ q_subclass MODNAME'  /2, '_^pathlp_247_ fact_q_subclass MODNAME'  /2,
+           '_^pathlp_247_ q_type MODNAME'      /5, '_^pathlp_247_ fact_q_type MODNAME'      /5.
+
+% Trie indexing, part 2.
+:- '_^pathlp_247_ index'(2, 'MODNAME').
+
+% Compiled file.
+
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load([foml])))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(newmodule(g)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load(graph, g)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(newmodule(mstud)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(newmodule(dstud)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load('exstud/stud_model.ppl', dstud)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load('exstud/stud_object.ppl', dstud)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load('exstud/stud_metamodel.ppl', mstud)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(load('foml-translation', mstud)))).
+:- '_^pathlp_247_ directive'((__MD = MODNAME, bin(module(dstud)))).

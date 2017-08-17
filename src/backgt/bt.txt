@@ -1,0 +1,21 @@
+1 Types:
+1.1 ?x!?y[?z] :- nonvar(?z)@_prolog,
+                 ?x!?y[?t],
+                 ?t::?z;
+1.2 ?x:?y :- typing(?t),
+             ?t = inference,
+             ?z!?t[?y],
+             ?u:?z,
+             ?u.?t[?x];
+2 Subtypes:
+2.1 ?x::?y :- ?x::?z,
+              ?z::?y,
+              ?x!=?y.
+3 Membership:
+3.1 ?x:?y :- ?x:?z,
+             ?z::?y;
+4 Equality:
+4.1 ?x:=:?x;
+4.2 ?x:=:?y :- ?y:=:?x;
+4.3 ?x:=:?y :- ?x:=:?z,
+               ?y:=:?z;

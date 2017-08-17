@@ -1,0 +1,83 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the background theories file for types.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Builtins main.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+% Subtype implication.
+?x!?y[?z] :- ?z._var[false],
+             ?x!?y[?t],
+             ?t::?z;
+
+% Typing distributivity polymorhism. %1
+?x:?y :- ?z::?y,
+         ?x:?z;
+%?x:?y :- ?x:?z,
+%         ?z::?y;
+% Double rule - see below.
+
+% Typing inference. Splitten code.
+?x:?y :- ?x._var[true],
+         typing(?kind, MODNAME),
+         ?kind = inference,
+         ?z!?t[?y],
+         ?z._var[false],
+         ?u:?z,
+         ?u.?t[?x];
+?x:?y :- ?x._var[false],
+         typing(?kind, MODNAME),
+         ?kind = inference,
+         ?u.?t[?x],
+         ?u:?z,
+         ?z._var[false],
+         ?z!?t[?y];
+
+% Subtyping transitivity. %2
+
+?x::?y :- ?x._var[false],
+          ?x::?z,
+          ?z::?y;
+?x::?y :- ?x._var[true],
+          ?z::?y,
+          ?x::?z;
+
+% Well typing attributes.
+
+?x!?e[?y]{?l..?h} :- ?x::?t,
+                     ?t!?e[?y]{?l..?h};
+
+Wrong_multiplicity
+!- ?x!?t[?y]{?l..?h}, 
+   (?l > ?h or ?l < 0);
+
+%%% The rules %1, %2 are not logically exclusive.
+% This happens because of need to treat infinite inductive types.
+% Let's check out a little example.
+% First of all let's write some code for Church Numbers.
+% First version:
+% zero:church;
+% s(?c):church :- ?c:church;
+% If we run a query
+% ?- ?x:church;
+% there will be infinite number of answers, and tabling will stuck.
+% So, we should prevent generator and make defensive programming:
+% zero:church;
+% ?x:church :- ?x._var[false],
+%              ?x = s(?y),
+%              ?y:church;
+% Let's return to the background theories.
+% Rule %1, for example, will run differently in the both versions for a query
+% ?- ?x:?y;
+% The first version can instantiate ?z in the first goal, so the second goal
+% will not include two variables.
+% The second version will include two variables.
+% So, the results can be different and we need both the rules.

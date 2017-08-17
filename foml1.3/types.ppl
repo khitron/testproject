@@ -1,0 +1,20 @@
+%%% FOML primitive types
+
+?x.int[?] :- ?x._var[true],
+             !,
+             fail;
+*.int[?x] :- ?x._var[true],
+             !,
+             ?x = true;
+*.int[true] :- true;
+*.int[false] :- true;
+?x.int[true] :- integer(?x)@_prolog;
+?x.int[false] :- \+ ?x.int[true];
+
+true:Boolean;
+false:Boolean;
+boolean
+!- ?x:Boolean,
+   \+ (?x = true
+   or
+   ?x = false);

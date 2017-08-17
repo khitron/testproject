@@ -1,0 +1,63 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the dynamic modules management builtins definition file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% module/1 (? module name)
+% This predicates changes current module to parameter,
+% or unificates current module, if variable.
+
+bin(module(X)) :- var(X),    % unificate if variable
+                  !,
+                  getconfig(module, X).
+bin(module(X)) :- getconfig(allmodules, LIST),
+                  (member(X / _ / _, LIST) ->
+                  abtr,
+                  retract(plpconf(CONF)),
+                  basics:select({module, _}, CONF, NEWCONF),
+                  asserta(plpconf([{module, X}|NEWCONF]));
+                  throwerr('wrong module name', X)).
+
+% newmodule/1 (+ module name)
+% This predicate creates new module.
+
+bin(newmodule(X)) :- var(X),
+                     !,
+                     throwerr('variable module name').
+bin(newmodule(X)) :- \+ atom(X),
+                     !,
+                     throwerr('wrong module name', X).
+bin(newmodule(lpp)) :- throwerr('virtual module name', lpp).
+bin(newmodule(X)) :- getconfig(allmodules, LIST),
+                     (member(X / _ / _,
+                           [module / _ / _, usermod / _ / _ |LIST]) ->
+                     throwerr('existing module', X);
+                     createmodule(X),
+                     retract(plpconf(CONF)),
+                           basics:select({allmodules, _}, CONF, NEWCONF),
+                     asserta(plpconf([{allmodules,
+                           [X / empty / inference|LIST]}|NEWCONF]))),
+                     bgt(X).    % background theories
+% existsmodule/1 (+ module name)
+% This predicate succeeds if the module does exist.
+
+bin(existsmodule(X)) :- var(X),
+                     !,
+                     throwerr('variable module name').
+bin(existsmodule(X)) :- \+ atom(X),
+                     !,
+                     throwerr('wrong module name', X).
+bin(existsmodule(lpp)) :- !,
+                          fail.
+bin(existsmodule(X)) :- getconfig(allmodules, LIST),
+                        member(X / _ / _, [module / _ / _, usermod / _ / _ |LIST]).

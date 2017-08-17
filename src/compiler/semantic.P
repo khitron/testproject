@@ -1,0 +1,145 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the compiler semantic analysis file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ * The input: Parsing tree, as output of parser.P parser.
+ * The output: Enriched parsing tree, as input of codegen.P code generator.
+ */
+
+% Module namespace directives.
+
+:- export seman/4.
+:- import member/2, ith/3 from basics.
+:- import need_abolish/1, pln/0, getconfig/2, setconfig/2, err/1, takestr/2 from
+          module.
+
+% XSB preprocessor definitions.
+
+:- compiler_options([spec_off, xpp_on]).
+
+#define PREFIX _^pathlp_247_
+#mode nostring "\!#'"
+
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+% Semantic analysis.
+% vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% seman/4 (+ parsing tree, - output, - variables list, - abolishing code)
+% This is semantic analysis main predicate.
+
+% Regular query - check if need to abolish tables,
+% find variables list, drop don't care variables.
+seman(query(print(X)), query(print(X)), VARS, P) :- need_abolish(P),
+                                                    seman(X, [], VARS, [], _).
+% Constraint - set new database flag,
+% find variables list, drop don't care variables.
+seman(constraint(X, Name), constraint(X, Name), VARS, '') :- setconfig(database, new),
+                                                       seman(X, [], VARS, [], _).
+% Rule - check read only properties, set new database flag,
+% check singletons and unsafe variables if needed.
+seman(rule(X, Y), RES, _, '') :- error_read_only(X, rule(X, Y), RES),
+                                 setconfig(database, new),
+                                 (getconfig(warnings, off);
+                                 seman(Y, [], VY, [], CY),
+                                 seman(X, VY, V, CY, C),
+                                 singletons(V, C),
+                                 seman(X, [], VX, [], _),
+                                 unsafe(VX, VY)).
+% Fact - check read only properties, set new database flag,
+% check singletons if needed.
+seman(fact(X), RES, _, '') :- error_read_only(X, fact(X), RES),
+                              setconfig(database, new),
+                              (getconfig(warnings, off);
+                              seman(X, [], V, [], C),
+                              singletons(V, C)).
+% Prolog received piece.
+seman(const(stamp(X)), const(stamp(X)), _, '').
+% Silent query and colon hyphen directive - check if need to abolish tables.
+seman(X, X, _, P) :- member(X, [query(silent(_)), directive(_)]),
+                     need_abolish(P).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% seman/5 (+ parsing tree, + variables list before this stage,
+% - variables list after this stage,
+% + variables appearances flags list before this stage,
+% - variables appearances flags list after this stage).
+% This predicate executes semantic analysis recursively.
+
+% List.
+seman([], V1, V1, C1, C1).
+seman([X|Y], V1, V3, C1, C3) :- seman(X, V1, V2, C1, C2),
+                                seman(Y, V2, V3, C2, C3).
+% Don't care variable.
+seman(var(X, Y), V1, V1, C1, C1) :- atom_concat('_', _, X);
+% Variable which appears not the first time.
+                                    ith(I, V1, var(X, Y)),
+                                    ith(I, C1, true).
+% Variable which appears first time.
+seman(var(X, Y), V1, [var(X, Y)|V1], C1, [_|C1]).
+% Compound term.
+seman(X, V1, V2, C1, C2) :- X =.. [_|Y],
+                            seman(Y, V1, V2, C1, C2).
+% The rest.
+seman(_, V1, V1, C1, C1).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% error_read_only/3 (+ property branch, + input branch, - output branch)
+% This predicate checks for read only property in consequents and 
+% enlarges the parsing tree with dynamic check predicate.
+
+error_read_only(A, _, _) :- 
+          member(A, [makeobj(_, const(pred(B)), _),
+                     maketype(_, const(pred(B)), _, _, _),
+                     makeobj(_, const(compound(const(pred(B)), _)), _),
+                     maketype(_, const(compound(const(pred(B)), _)), _, _, _)]),
+          takestr(B, C),
+          atom_concat('_', _, C),
+          !,
+          err('ERROR: _ property'),
+          fail.
+% Always executed, if no error caught.
+error_read_only(A, X, Y) :-
+                       ((member(A, [makeobj(_, M, _), maketype(_, M, _, _, _)]),
+                       M = var(_, _)) ->
+                       enrichtree(X, Y, M);
+                       X = Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% singletons/2 (+ variables list, + appearances list)
+% This predicate prints singleton variables warnings.
+
+singletons([], []).
+singletons([var(V1, _)|VREST], [C1|CREST]) :-
+                             singletons(VREST, CREST),
+                             (nonvar(C1);
+                             (pln,
+                             write('Warning: Singleton variable: ?'),
+                             writeln(V1))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% unsafe/2 (+ rule left side variables list, + rule right side variables list)
+% This predicate prints unsafe variables
+% (which appears only on the left side of the rule) warnings.
+
+unsafe([], _).
+unsafe([var(V1, _)|VREST], VY) :- unsafe(VREST, VY),
+                                  (member(var(V1, _), VY);
+                                  pln,
+                                  write('Warning: Leftside variable: ?'),
+                                  writeln(V1)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% enrichtree/2 (+ input branch, - output branch)
+% This predicate enlarges the parsing tree branch
+% for read only properties check.
+
+enrichtree(fact(X), rule(X, pair(const(compound(const(pred(p(
+                   'PREFIX checkat'))), [M])), const(pred(p('_prolog'))))), M).
+enrichtree(rule(X, Y), rule(X, andb(Y, pair(const(compound(const(pred(p(
+                   'PREFIX checkat'))), [M])), const(pred(p('_prolog')))))), M).

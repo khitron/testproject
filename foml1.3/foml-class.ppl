@@ -1,0 +1,34 @@
+%%% FOML class operations
+
+% Disjunction
+?o.member(?mod)[OR(?x, ?y)] :- ?x._var[false],
+                               ?y._var[false],
+                               ?x:Class@?mod,
+                               ?y:Class@?mod,
+                               ?x != ?y,
+                               (?o:?x@?mod or ?o:?y@?mod);
+
+% Conjunction
+
+?o.member(?mod)[AND(?x, ?y)] :- ?x._var[false],
+                                ?y._var[false],
+                                ?x:Class@?mod,
+                                ?y:Class@?mod,
+                                ?x != ?y,
+                                ?o:?x@?mod,
+                                ?o:?y@?mod;
+
+% Negation
+?o.member(?mod)[NOT(?x)] :- ?x._var[false],
+                            ?x:Class@?mod,
+                            ?o:?c1@?mod,
+                            ?c1:Class@?mod,
+                            not ?o:?x@?mod;
+
+% Enumerator
+
+?o.member(?)[?classOf] :- ?classOf._var[false],
+                          ?classOf =.. [?name|?members],
+                          ?name._var[false],
+                          ?name = classOf,
+                          ?members._member[?o];

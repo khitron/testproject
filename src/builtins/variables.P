@@ -1,0 +1,59 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the variables management builtins file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+#define STORAGE vars
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% bin/1 (+ builtin predicate as functor) (partially)
+% This predicate defines application builtins.
+
+% setglobal/2.
+% This predicate sets a global variable.
+
+bin(setglobal(VAR, _VAL)) :- var(VAR),
+                             !,
+							 throwerr('Variable name as variable').
+bin(setglobal(VAR, VAL)) :- var(VAL),
+                            !,
+						    throwerr('Variable value as variable', VAR).
+bin(setglobal(VAR, VAL)) :- storage:storage_delete_keypair_bt(STORAGE, VAR, _), 
+                            storage:storage_insert_keypair_bt(STORAGE, VAR, VAL, _).
+
+% readglobal/2.
+% This predicate reads a global variable value.
+
+bin(readglobal(VAR, _VAL)) :- var(VAR),
+                              !,
+						 	  throwerr('Variable name as variable').
+bin(readglobal(VAR, VAL)) :- storage:storage_find_keypair(STORAGE, VAR, ANS),
+                             !,
+                             ANS = VAL.
+bin(readglobal(VAR, _VAL)) :- throwerr('Variable not found', VAR).
+
+% unsetglobal/1
+% This predicate unsets the global variable.
+
+bin(unsetglobal(VAR)) :- var(VAR),
+                      !,
+				      throwerr('Variable name as variable').
+bin(unsetglobal(VAR)) :- storage:storage_delete_keypair_bt(STORAGE, VAR, _).
+
+% printglobals/0
+% This predicate prints all the global variables value
+
+bin(printglobals) :- storage:storage_find_keypair(STORAGE, _, _),
+                     !,
+					 writeln('Global variables: '),
+                     forall(storage:storage_find_keypair(STORAGE, VAR, ANS),
+                     writeln(VAR is ANS)).
+bin(printglobals).
+
+vars_commit :- storage:storage_commit(STORAGE).

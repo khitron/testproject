@@ -1,0 +1,114 @@
+patternspec --> var | collection
+var --> class | property | multiplicity
+collection --> sequence | ...
+sequence --> propertysequence
+propertysequence --> + | *
+start end + *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<pcdmodel> ::= <pattern>+
+<pattern> ::= pattern <patternspec>+ end
+<patternspec> ::= <var> | <collection>
+<var> ::= <varclass> | <varproperty> | <varmultiplicity>
+<collection> ::= <sequence> /* | <inheritance> */
+<sequence> ::= sequence ['+' | '*'] association between <sequenceend> <sequenceend> end
+<varclass> ::= <atom>
+<varproperty> ::= <atom>
+<varmultiplicity> ::= <atom>
+
+
+<sequence> | <inheritance> | <gsspec>
+<sequence> ::= sequence ['+' | '*'] association between <sequenceend> <sequenceend> end
+<sequenceend> ::= <varclass>
+<inheritance> ::= <varclass> ['<' | '<+' | '<*'] <varclass>
+<gsspec> ::= gs <name> type [disjoint|overlapping|complete|incomplete] super <varclass> subClasses <varclass> [{, <varclass>}]
+<roles> ::= roles: <role> [{, <role>}]
+<varclass> ::= <atom> ['[' <role> ']']
+<role> ::= <atom>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<pcdmodel>              ::= <pattern>+
+<pattern>               ::= 'pattern' <patternname> <pattern-spec> 'end'
+<pattern-spec>          ::= <class-var>+ <property-var>* <collection>*
+                                   /* Notation: class-vars(<pattern-spec>)
+<class-var>             ::= 'class_var' 'class_var' <classname> ['<' <classname> {, <classname>}] 'end'
+                                   /* Constraint: <classname> are in class-vars(<pattern-spec>)
+<property-var>          ::= 'property_var' <propertyname> <classname> <classname> <multiplicity-var> 'end'
+                                   /* Constraint: <classname> is in class-vars(<pattern-spec>)
+<collection>            ::= <ordered-collection> | <set-collection>
+<ordered-collection>    ::= <property-sequence> | <class-hierarchy-sequence> | ...
+<property-sequence> ::= 'property_sequence' <ordered-collection-spec> 'end'
+<class-hierarchy-sequence> ::= 'class_hierarchy_sequence' <ordered-collection-spec> 'end'
+<ordered-collection-spec> ::= <quantity> <classname> <classname>
+                                   /* Constraint: <classname> in class-vars(<pattern-spec>)
+<quantity>              ::= '+' | '*'
+<multiplicity-var>      ::= '[' <var> .. (<var> | '*') ']'
+<patternname>           ::= <var>
+<classname>             ::= <var>
+<propertyname>          ::= <var>
+<var>                   ::= '?'(a|...|z|0|...|9|...)+
+/* Verification constraints
+
+Translated to goals in rule body:
+class_var ?A end -> ?A:Base_Class
+property_sequence + ?A ?B end -> ?A.path(?PATH_FROM_A_TO_B)[?B]
+property_sequence * ?A ?B end -> ?A.starpath(?PATH_FROM_A_TO_B)[?B]

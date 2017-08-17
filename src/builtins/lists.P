@@ -1,0 +1,257 @@
+/*
+ * This file is PathLP compiler and interpreter command line application,
+ * the lists library file.
+ * It was created by Igal Khitron.
+ * 
+ * The PathLP Logic Programming Language was developed by
+ * Professor Mira Balaban, Ben-Gurion University of the Negev, Israel,
+ * and Professor Michael Kifer, Stony Brook University, NY, USA.
+ *
+ */
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% prefix-is_q_untproperty/4 (+ module name, ? object, ? property, ?guard)
+% (partially)
+% This predicate evaluates untabled property.
+
+'PREFIX is_q_untproperty'(_MOD, X, Y, Z) :- 
+                             nonvar(Y),
+                             member(Y, ['_islist', '_member',
+                               '_length', '_append'(_),
+                               '_append']),
+                             lists(X, Y, Z).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% lists/3 (? object, + property, ?guard)
+% This predicate evaluates lists library.
+
+% _islist/0 (? list candidate, ? boolean answer)
+% This predicate checks if the argument is a list.
+
+% If difference list.
+lists(A, '_islist', true) :- nonvar(A),
+                    A = X - Y,
+                    (var(X);
+                    myislist(X)),
+                    (var(Y);
+                    myislist(Y)),
+                    !.
+lists(A, '_islist', true) :- myislist(A),
+                    !.
+lists(A, '_islist', false) :- \+ lists(A, '_islist', true).
+
+% _length/0 (? list, ? length)
+% This predicate succeeds if first argument length list equal to the second one.
+
+% Infinite loop.
+lists(X, '_length', '*') :- checkloop(X),
+                     !.
+% Given length.
+lists(X, '_length', Y) :- nonvar(Y),
+                   !,
+                   integer(Y),
+                   Y >= 0,
+                   length(X, Y).
+% Variable list.
+lists(X, '_length', Y) :- (var(X) ->
+                   undefined,
+                   Y = 0;
+% Tail same as length error.
+                   checktail(X, Y),
+% Closed list.
+                   (is_list(X) ->
+                   length(X, Y);
+% Open list.
+                   undefined,
+                   \+ \+ once((length(X, Y),
+                   asserta(ast(Y)))),
+                   retract(ast(Y)))),
+                   !.
+
+% _member/0 (? list, ? element)
+% This predicate succeeds if first argument is a member of second argument list.
+
+% Same start difference list.
+lists(Y, '_member', X) :- nonvar(Y),
+                   Y = [Z|T] - [U|V],
+                   Z == U,
+                   !,
+                   lists(T - V, '_member', X).
+% Difference list.
+lists(Y, '_member', X) :- nonvar(Y),
+                   Y = Z - T,
+                   !,
+                   (Z == T ->
+                   fail;
+                   (mymember(X, Z);
+                   nonvar(T),
+                   mymember(X, T))).
+% Normal list.
+lists(Y, '_member', X) :- mymember(X, Y).
+
+% _append/1 (? list1, ?list2, ? element)
+% This predicate succeeds if third argument list is an appending of the two first.
+
+lists(X, '_append'(Y), Z) :- checkl(X),
+                    checkl(Y),
+                    checkl(Z),
+                    append(X, Y, Z).
+
+% _append/0 (? listslist, ? element)
+% This predicate succeeds if third argument list is an appending of the two first.
+
+lists(X, '_append', Y) :- checkl(Y),
+                   app(X, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% mymember/2 (? element, + list)
+% This predicate succeeds if first argument is a member of second argument list.
+
+% Error.
+mymember(X, Y) :- X == Y,
+            !,
+            fail.
+% Infinite list.
+mymember(ELEM, LIST) :- once(checkloop(LIST, ELEM, FOUND, RES)),
+                !,
+                \+ \+ (getconfig(warnings, on) ->
+                ((var(ELEM) ->
+                Z = [ELEM|RES];
+                Z = RES),
+                checkset(Z) ->
+                otherwise;
+                nl,
+                writeln('Warning: repeats in the set'));
+                otherwise),
+                (FOUND = false ->
+                member(ELEM, RES);
+                otherwise).
+% Final list.
+mymember(X, Y) :- \+ \+ (append(Y, [1], _),
+            (getconfig(warnings, on) ->
+            ((var(X) ->
+            Z = [X|Y];
+            Z = Y),
+            (checkset(Z) ->
+            otherwise;
+            nl,
+            writeln('Warning: repeats in the set')));
+            otherwise)),
+            findinlist(X, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkloop/4 (+ input list, + element to find, + found flag, - final list)
+% This predicate checks if the input is infinite list,
+% and on the way creates final copy and checks if the mymember argument is in it.
+% All checkloop predicates use rabbits algorithm.
+
+checkloop(X, ELEM, FOUND, LIST) :- nextloop(X, Y),
+                         checkloop(X, Y, ELEM, FOUND, LIST).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkset/1 (+ list)
+% This predicate checks if the argument is a set.
+
+checkset(X) :- sort(X, Y),
+           length(X, A),
+           length(Y, A).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% findinlist/2 (? element, + list)
+% This predicate checks if the element is a member of final proper list.
+
+findinlist(_, X) :- var(X),
+              !,
+              undefined.
+findinlist(X, [Y|Z]) :- X = Y;
+                findinlist(X, Z).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkloop/1 (+ input list)
+% This predicate checks if the input is infinite list.
+
+checkloop(X) :- nextloop(X, Y),
+            checkloop(X, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checktail/2 (+ list, + unbounded variable)
+% This predicate checks if the list doesn't have a tail which is the same
+% variable as the second arguments (this list future length).
+
+checktail([], _).
+checktail([_|X], Y) :- var(X),
+                 !,
+                 \+ X == Y.
+checktail([_|X], Y) :- checktail(X, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% myislist/1 (+ normal list candidate)
+% This predicate checks if the argument is a list.
+
+% Variable.
+myislist(X) :- var(X),
+           !,
+           undefined.
+% Infinite list.
+myislist(X) :- checkloop(X),
+           !.
+% Final list.
+myislist(X) :- finallist(X).
+
+finallist(X) :- \+ \+ append(X, [1], _).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nextloop/2 (+ list, - list)
+% This predicate jumps to the next link in the list.
+
+nextloop(X, Y) :- nonvar(X),
+            X = [_|Y].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkloop/2 (+ back link, + front link)
+% This predicate checks if the input is infinite list in next iteration.
+
+checkloop(X, Y) :- X == Y,
+             !.
+checkloop(X, Y) :- nextloop(X, XX),
+             nextloop(Y, YY),
+             nextloop(YY, YYY),
+             checkloop(XX, YYY).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkloop/5 (+ back link, + front link, + element to find, + found flag,
+% - final list)
+% This predicate checks if the input is infinite list in next iteration,
+% and on the way creates final copy and checks if the mymember argument is in it.
+
+% Take first element.
+checkloop(X, Y, ELEM, FOUND, RES) :- X = [H|_],
+% Check if found element.
+                         (H == ELEM ->
+                         FOUND = true;
+                         otherwise),
+% Algorithm body, including list collect.
+                         (X == Y ->
+                         RES = [H];
+                         nextloop(X, XX),
+                         nextloop(Y, YY),
+                         nextloop(YY, YYY),
+                         checkloop(XX, YYY, ELEM, FOUND, LIST),
+                         RES = [H|LIST]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% checkl/1 (+ list candidate)
+% This predicate checks if argument is a final proper list.
+
+checkl(X) :- once(\+ \+ ((var(X);
+                  lists(X, '_islist', true),
+                  finallist(X)))).
+%TODO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% app2/2 (@ lists list, appended list)
+% This predicate checks if argument is a final proper list.
+
+app([], []).
+app([X|Y], Z) :- checkl(X),
+             append(X, T, Z),
+             app(Y, T).
