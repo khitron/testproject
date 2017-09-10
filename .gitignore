@@ -1,2 +1,3 @@
 XSB
 *.xwam
+/lib/*.P_gpp

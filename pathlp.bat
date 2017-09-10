@@ -1,4 +1,4 @@
-@echo on
+@echo off
 setlocal
 
 REM          PathLP WINDOWS and DOS invocation script
@@ -12,7 +12,7 @@ REM as first letter of your files or folders.
 REM You should fill these fields.
 
 REM You should fill the address of the file xsb.bat (xsb64.bat for 64-bit).
-set xsb="O:\Desktop\PathLP\PathLP_public\XSB\bin\xsb64.bat"
+set xsb="E:\mygit\PathLP_public\XSB\XSB\bin\xsb64.bat"
 
 REM You can fill the address of your computer temporary files directory.
 REM You should use / in place of \, or be careful using \ and put \\ in needed places.
